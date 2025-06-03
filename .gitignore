@@ -3,7 +3,7 @@
 /dist
 /.idea/workspace.xml
 /.idea/dbnavigator.xml
-
+/.idea/shelf
 /node_modules
 npm-debug.log*
 yarn-debug.log*
