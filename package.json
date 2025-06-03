@@ -1,0 +1,35 @@
+{
+  "name": "repository-criteria-interface",
+  "version": "0.0.1",
+  "license": "MIT",
+  "description": "A library providing an interface for the Repository Pattern with powerful data filtering and join capabilities using a criteria module and adapter-based architecture.",
+  "keywords": [
+    "repository",
+    "pattern",
+    "data-access",
+    "orm",
+    "database",
+    "query",
+    "filter",
+    "criteria",
+    "join",
+    "adapter",
+    "data-source-agnostic"
+  ],
+  "homepage": "https://github.com/Techscq/repository-criteria-interface",
+  "bugs": {
+    "url": "https://github.com/Techscq/repository-criteria-interface/issues"
+  },
+  "author": "Nelson Cabrera <contact@nelsoncabrera.dev>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Techscq/repository-criteria-interface.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}
