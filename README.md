@@ -10,11 +10,11 @@ An adapter mechanism is in place to translate these `criteria` configurations in
 
 ## Key Features
 
-* **Repository Pattern Interface:** Provides a clear contract for data access operations (e.g., `find`, `findOne`, `findAll`, `save`, `delete`).
-* **Powerful Filtering with Criteria:** The central `criteria` module enables complex filtering based on entity properties and related data.
-* **Join Configuration:** Define how related entities should be fetched (e.g., inner join, left join, eager loading).
-* **Adapter-Based Architecture:** Easily integrate with various data sources by implementing specific adapters.
-* **Data Source Agnostic:** The core library remains independent of the underlying data storage implementation.
+- **Repository Pattern Interface:** Provides a clear contract for data access operations (e.g., `find`, `findOne`, `findAll`, `save`, `delete`).
+- **Powerful Filtering with Criteria:** The central `criteria` module enables complex filtering based on entity properties and related data.
+- **Join Configuration:** Define how related entities should be fetched (e.g., inner join, left join, eager loading).
+- **Adapter-Based Architecture:** Easily integrate with various data sources by implementing specific adapters.
+- **Data Source Agnostic:** The core library remains independent of the underlying data storage implementation.
 
 ## Getting Started (Conceptual)
 
@@ -41,7 +41,7 @@ const criteria = new CriteriaBuilder()
   .limit(10)
   .build();
 
-userRepository.findAll(criteria)
-  .then(usersWithOrders => {
-    console.log(usersWithOrders);
-  });
+userRepository.findAll(criteria).then((usersWithOrders) => {
+  console.log(usersWithOrders);
+});
+```
