@@ -19,9 +19,17 @@
     "sourceMap": true,
 
     "declaration": true,
-
     "declarationMap": true,
     "types": ["vitest/globals"],
     "lib": ["ES2023"]
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "vitest.config.ts",
+    "vitest.config.d.ts",
+    "vitest.config.d.ts.map",
+    "vitest.config.js",
+    "vitest.config.js.map"
+  ]
 }

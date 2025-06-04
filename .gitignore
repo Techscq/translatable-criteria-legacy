@@ -12,3 +12,7 @@ yarn-error.log*
 .pnp.js
 .DS_Store
 .vscode/*
+vitest.config.js
+vitest.config.js.map
+vitest.config.d.ts
+vitest.config.d.ts.map

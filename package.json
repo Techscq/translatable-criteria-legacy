@@ -16,10 +16,17 @@
     "adapter",
     "data-source-agnostic"
   ],
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
-    "ci": "npm run build && npm run check-format && npm run check-exports && npm run test",
+    "ci": "npm run check-format && npm run check-exports && npm run test",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
     "check-exports": "attw --pack . --ignore-rules=cjs-resolves-to-esm",
@@ -36,7 +43,9 @@
     "url": "git+https://github.com/Techscq/repository-criteria-interface.git"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE",
+    "README.md"
   ],
   "type": "module",
   "devDependencies": {
