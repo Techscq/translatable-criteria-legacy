@@ -1,24 +1,24 @@
 import { Criteria } from '../criteria.js';
+import { CommentSchema, PostSchema, UserSchema } from './dummy/dummy.schema.js';
 import {
   CriteriaType,
   FilterOperator,
   LogicalOperator,
 } from '../criteria.types.js';
+import type { StoredJoinDetails } from '../criteria-join.types.js';
 import { FilterGroup } from '../filter-group.js';
-import { BSchema, CSchema, ASchema } from './dummy/dummy.schema.js';
-import type { StoredJoinDetails } from '../criteria.js';
 
 describe('Criteria', () => {
-  let rootCriteria: Criteria<typeof BSchema, 'posts'>;
+  let rootCriteria: Criteria<typeof PostSchema, 'posts'>;
 
   beforeEach(() => {
-    rootCriteria = Criteria.Create(BSchema, 'posts');
+    rootCriteria = Criteria.Create(PostSchema, 'posts');
   });
 
   it('should be created with ROOT type', () => {
     expect(rootCriteria).toBeInstanceOf(Criteria);
     expect(rootCriteria.type).toBe(CriteriaType.ROOT);
-    expect(rootCriteria.schema).toBe(BSchema);
+    expect(rootCriteria.schema).toBe(PostSchema);
     expect(rootCriteria.alias).toBe('posts');
     expect(rootCriteria.sourceName).toBe('post');
   });
@@ -29,7 +29,7 @@ describe('Criteria', () => {
   });
 
   it('should have empty orders and joins initially', () => {
-    const joinsArray: Array<[string, StoredJoinDetails<typeof BSchema>]> = [
+    const joinsArray: Array<[string, StoredJoinDetails<typeof PostSchema>]> = [
       ...rootCriteria.joins,
     ];
     expect(joinsArray).toEqual([]);
@@ -93,7 +93,7 @@ describe('Criteria', () => {
   });
 
   it('should add an inner join', () => {
-    const userJoinCriteria = Criteria.CreateInnerJoin(CSchema, 'publisher');
+    const userJoinCriteria = Criteria.CreateInnerJoin(UserSchema, 'publisher');
     const joinParameter = {
       parent_field: 'uuid',
       join_field: 'uuid',
@@ -118,13 +118,16 @@ describe('Criteria', () => {
   });
 
   it('should add multiple joins', () => {
-    const userJoinCriteria = Criteria.CreateInnerJoin(CSchema, 'publisher');
+    const userJoinCriteria = Criteria.CreateInnerJoin(UserSchema, 'publisher');
     const userJoinParameter = {
       parent_field: 'uuid',
       join_field: 'uuid',
     } as const;
 
-    const commentJoinCriteria = Criteria.CreateLeftJoin(ASchema, 'comments');
+    const commentJoinCriteria = Criteria.CreateLeftJoin(
+      CommentSchema,
+      'comments',
+    );
     const commentJoinParameter = {
       parent_field: 'uuid',
       join_field: 'uuid',
@@ -160,13 +163,13 @@ describe('Criteria', () => {
   });
 
   it('should replace a join if the same alias is used', () => {
-    const userJoinCriteria1 = Criteria.CreateInnerJoin(CSchema, 'publisher');
+    const userJoinCriteria1 = Criteria.CreateInnerJoin(UserSchema, 'publisher');
     const userJoinParameter1 = {
       parent_field: 'uuid',
       join_field: 'uuid',
     } as const;
 
-    const userJoinCriteria2 = Criteria.CreateLeftJoin(CSchema, 'publisher');
+    const userJoinCriteria2 = Criteria.CreateLeftJoin(UserSchema, 'publisher');
     const userJoinParameter2 = {
       parent_field: 'uuid',
       join_field: 'uuid',

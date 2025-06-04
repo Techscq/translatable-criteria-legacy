@@ -1,7 +1,7 @@
 import { Criteria } from '../../criteria.js';
 import { FilterOperator } from '../../criteria.types.js';
 
-export const BSchema = {
+export const PostSchema = {
   source_name: 'post',
   alias: ['posts'],
   fields: ['uuid', 'title', 'body'],
@@ -11,7 +11,7 @@ export const BSchema = {
   ],
 } as const;
 
-export const ASchema = {
+export const CommentSchema = {
   source_name: 'comment',
   alias: ['comments'],
   fields: ['uuid', 'comment_text'],
@@ -21,7 +21,7 @@ export const ASchema = {
   ],
 } as const;
 
-export const CSchema = {
+export const UserSchema = {
   source_name: 'user',
   alias: ['users', 'publisher'],
   fields: ['uuid', 'email', 'username'],
@@ -37,7 +37,7 @@ export const CSchema = {
   ],
 } as const;
 
-export const DSchema = {
+export const PermissionSchema = {
   source_name: 'permission',
   alias: ['permissions'],
   fields: ['uuid', 'name'],
@@ -49,9 +49,9 @@ export const DSchema = {
   ],
 } as const;
 
-export const FSchema = {
+export const DirectionSchema = {
   source_name: 'directions',
-  alias: ['address', 'address2'],
+  alias: ['address'],
   fields: ['uuid', 'direction'],
   joins: [
     {
@@ -61,27 +61,34 @@ export const FSchema = {
   ],
 } as const;
 
-Criteria.Create(BSchema, 'posts')
+Criteria.Create(PostSchema, 'posts')
   .where({
     field: 'uuid',
     operator: FilterOperator.EQUALS,
-    value: 'asd',
+    value: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
   })
   .join(
-    Criteria.CreateInnerJoin(CSchema, 'publisher').join(
-      Criteria.CreateInnerJoin(DSchema, 'permissions'),
+    Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
+      Criteria.CreateInnerJoin(UserSchema, 'users'),
       {
-        join_source_name: 'permission_user',
-        join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
-        parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
+        parent_field: 'uuid',
+        join_field: 'uuid',
       },
     ),
     {
       parent_field: 'uuid',
       join_field: 'uuid',
     },
-  )
-  .join(Criteria.CreateInnerJoin(ASchema, 'comments'), {
-    parent_field: 'uuid',
-    join_field: 'uuid',
+  );
+
+Criteria.Create(UserSchema, 'users')
+  .where({
+    field: 'email',
+    operator: FilterOperator.EQUALS,
+    value: 'contact@nelsoncabrera.dev',
+  })
+  .join(Criteria.CreateInnerJoin(PermissionSchema, 'permissions'), {
+    join_source_name: 'permission_user',
+    join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
+    parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
   });

@@ -26,12 +26,13 @@
   },
   "scripts": {
     "build": "tsc",
-    "ci": "npm run check-format && npm run check-exports && npm run test",
+    "ci": "npm run check-circular && npm run check-format && npm run check-exports && npm run test",
     "format": "prettier --write .",
     "check-format": "prettier --check .",
     "check-exports": "attw --pack . --ignore-rules=cjs-resolves-to-esm",
     "test": "vitest run",
-    "dev": "vitest"
+    "dev": "vitest",
+    "check-circular": "npx madge --circular --extensions ts ./src"
   },
   "homepage": "https://github.com/Techscq/repository-criteria-interface",
   "bugs": {
@@ -50,6 +51,7 @@
   "type": "module",
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.1",
+    "madge": "^8.0.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.0"

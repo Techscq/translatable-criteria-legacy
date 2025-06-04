@@ -1,4 +1,4 @@
-import { Order, OrderDirection, type OrderByPrimitive } from '../order.js';
+import { Order, type OrderByPrimitive, OrderDirection } from '../order.js';
 
 describe('Order', () => {
   const primitive: OrderByPrimitive = {

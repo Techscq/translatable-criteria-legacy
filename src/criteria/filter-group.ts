@@ -1,10 +1,11 @@
-import { LogicalOperator } from './criteria.types.js';
+import { LogicalOperator } from './operators.types.js';
 import { Filter, type FilterPrimitive } from './filter.js';
 
 export type FilterGroupPrimitive<T extends string = string> = {
   readonly logicalOperator: LogicalOperator;
   readonly items: ReadonlyArray<FilterPrimitive<T> | FilterGroupPrimitive>;
 };
+
 export class FilterGroup {
   readonly _logicalOperator: LogicalOperator;
   readonly _items: ReadonlyArray<Filter | FilterGroup>;

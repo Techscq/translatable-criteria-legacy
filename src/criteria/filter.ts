@@ -1,4 +1,4 @@
-import { FilterOperator } from './criteria.types.js';
+import { FilterOperator } from './operators.types.js';
 
 export type FilterValue =
   | string

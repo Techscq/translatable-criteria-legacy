@@ -1,80 +1,50 @@
-import { FilterGroup } from './filter-group.js';
 import type { FilterPrimitive } from './filter.js';
-import {
-  type AliasOfSchema,
-  type CriteriaSchema,
-  CriteriaType,
-  type FieldOfSchema,
-  type PivotJoin,
-  type SchemaJoins,
-  type SimpleJoin,
-  type CriteriaType as CriteriaTypeAlias,
-} from './criteria.types.js';
+import type {
+  AliasOfSchema,
+  CriteriaSchema,
+  FieldOfSchema,
+} from './schema.types.js';
 import { Order } from './order.js';
-
-export type SpecificMatchingJoinConfig<
-  ParentSchema extends CriteriaSchema,
-  JoinedSchemaSpecificAlias extends string,
-> = Extract<
-  ParentSchema['joins'][number],
-  { alias: JoinedSchemaSpecificAlias }
->;
-
-export type JoinCriteriaParameterType<
-  ParentSchema extends CriteriaSchema,
-  JoinedSchema extends CriteriaSchema,
-  ActualJoinedAlias extends AliasOfSchema<JoinedSchema>,
-  MatchingConfigForActualAlias extends SchemaJoins<string> | never,
-> = [MatchingConfigForActualAlias] extends [never]
-  ? `Error: The alias '${ActualJoinedAlias}' of schema '${JoinedSchema['source_name']}' is not configured for join in '${ParentSchema['source_name']}'.`
-  : Criteria<
-      JoinedSchema,
-      ActualJoinedAlias,
-      Exclude<CriteriaTypeAlias, typeof CriteriaType.ROOT>
-    >;
-
-export type JoinParameterType<
-  ParentSchema extends CriteriaSchema,
-  JoinedSchema extends CriteriaSchema,
-  MatchingJoinConfig extends SchemaJoins<string> | never,
-> = [MatchingJoinConfig] extends [never]
-  ? never
-  : MatchingJoinConfig['with_pivot'] extends true
-    ? PivotJoin<ParentSchema, JoinedSchema>
-    : SimpleJoin<ParentSchema, JoinedSchema>;
-
-export interface StoredJoinDetails<ParentSchema extends CriteriaSchema> {
-  type: Exclude<CriteriaTypeAlias, typeof CriteriaType.ROOT>;
-  parameters:
-    | PivotJoin<ParentSchema, CriteriaSchema>
-    | SimpleJoin<ParentSchema, CriteriaSchema>;
-  criteria: Criteria<
-    CriteriaSchema,
-    AliasOfSchema<CriteriaSchema>,
-    Exclude<CriteriaTypeAlias, typeof CriteriaType.ROOT>
-  >;
-}
+import type {
+  JoinCriteriaParameterType,
+  JoinParameterType,
+  SpecificMatchingJoinConfig,
+} from './criteria-join.types.js';
+import { CriteriaFilterManager } from './criteria-filter-manager.js';
+import { CriteriaJoinManager } from './criteria-join-manager.js';
+import type { IFilterManager, IJoinManager } from './criteria-manager.types.js';
+import type { ICriteriaBase } from './criteria-common.types.js';
+import { CriteriaType } from './criteria.types.js';
 
 export class Criteria<
   CSchema extends CriteriaSchema,
   CurrentAlias extends AliasOfSchema<CSchema> = AliasOfSchema<CSchema>,
-  TCriteriaType extends CriteriaTypeAlias = CriteriaTypeAlias,
-> {
-  protected _joins: Map<string, StoredJoinDetails<CSchema>> = new Map();
+  TCriteriaType extends
+    | typeof CriteriaType.ROOT
+    | (typeof CriteriaType.JOIN)[keyof typeof CriteriaType.JOIN] =
+    | typeof CriteriaType.ROOT
+    | (typeof CriteriaType.JOIN)[keyof typeof CriteriaType.JOIN],
+> implements ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>
+{
+  private readonly filterManager: IFilterManager<CSchema>;
+  private readonly joinManager: IJoinManager<CSchema>;
   private readonly _take: number = 1;
   private readonly _skip: number = 0;
   private readonly _orders: ReadonlyArray<Order<string>> = [];
-  private _rootFilterGroup?: FilterGroup;
 
   protected constructor(
     protected readonly _schema: CSchema,
     protected _alias: CurrentAlias,
     protected _criteriaType: TCriteriaType,
-  ) {}
+  ) {
+    this.filterManager = new CriteriaFilterManager<CSchema>();
+    this.joinManager = new CriteriaJoinManager<CSchema>();
+  }
 
   get type() {
     return this._criteriaType;
   }
+
   get schema() {
     return this._schema;
   }
@@ -92,11 +62,11 @@ export class Criteria<
   }
 
   get rootFilterGroup() {
-    return this._rootFilterGroup;
+    return this.filterManager.getRootFilterGroup();
   }
 
-  get joins(): Array<[string, StoredJoinDetails<CSchema>]> {
-    return Array.from(this._joins.entries());
+  get joins() {
+    return this.joinManager.getJoins();
   }
 
   get sourceName() {
@@ -147,44 +117,24 @@ export class Criteria<
     return new Criteria(criteriaSchema, alias, CriteriaType.JOIN.FULL_OUTER);
   }
 
-  private getNewRootFilterGroup(
-    operation: 'replace' | 'and' | 'or',
-    newFilterOrGroup: FilterPrimitive<FieldOfSchema<CSchema>>,
-  ): FilterGroup {
-    return FilterGroup.getUpdatedFilter(
-      this._rootFilterGroup?.toPrimitive(),
-      operation,
-      newFilterOrGroup,
-    );
-  }
-
-  public where(
+  where(
     filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this._rootFilterGroup = this.getNewRootFilterGroup(
-      'replace',
-      filterOrGroupPrimitive,
-    );
+    this.filterManager.where(filterOrGroupPrimitive);
     return this;
   }
 
-  public andWhere(
+  andWhere(
     filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this._rootFilterGroup = this.getNewRootFilterGroup(
-      'and',
-      filterOrGroupPrimitive,
-    );
+    this.filterManager.andWhere(filterOrGroupPrimitive);
     return this;
   }
 
-  public orWhere(
+  orWhere(
     filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this._rootFilterGroup = this.getNewRootFilterGroup(
-      'or',
-      filterOrGroupPrimitive,
-    );
+    this.filterManager.orWhere(filterOrGroupPrimitive);
     return this;
   }
 
@@ -194,7 +144,7 @@ export class Criteria<
     TMatchingJoinConfig extends SpecificMatchingJoinConfig<
       CSchema,
       JoinedCriteriaAlias
-    > = SpecificMatchingJoinConfig<CSchema, JoinedCriteriaAlias>,
+    >,
   >(
     criteriaToJoin: JoinCriteriaParameterType<
       CSchema,
@@ -204,14 +154,7 @@ export class Criteria<
     >,
     joinParameter: JoinParameterType<CSchema, JoinSchema, TMatchingJoinConfig>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    if (criteriaToJoin instanceof Criteria) {
-      const joinDetails: StoredJoinDetails<CSchema> = {
-        type: criteriaToJoin.type,
-        parameters: joinParameter,
-        criteria: criteriaToJoin,
-      };
-      this._joins.set(criteriaToJoin.alias, joinDetails);
-    }
+    this.joinManager.addJoin(criteriaToJoin, joinParameter);
     return this;
   }
 }
