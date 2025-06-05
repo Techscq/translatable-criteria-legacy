@@ -1,32 +1,41 @@
-# Repository Criteria Interface
+# Translatable Criteria
 
 [![Development Stage](https://img.shields.io/badge/Development-Early%20Stage-yellow)]()
 
-A TypeScript library providing an interface for the Repository Pattern with powerful data filtering and join capabilities using a criteria module and adapter-based architecture.
+A TypeScript library for building data-source agnostic, translatable query criteria. Define complex filtering, ordering, and join logic in a structured, type-safe way, then translate it to your specific data source using custom translators.
 
 ## Installation
 
 ```bash
-  npm install repository-criteria-interface
+  npm install translatable-criteria
 ```
 
 ## Overview
 
-This library simplifies data access within your application by providing a consistent and abstract way to interact with different data sources. The core concept revolves around the `criteria` module, which allows developers to define sophisticated filtering and relationship (joins) configurations in a data source-agnostic manner.
+This library simplifies the construction of complex data queries by providing a consistent and abstract way to define filtering, ordering, and relationship (joins) configurations. The core concept revolves around the `Criteria` object, which allows developers to define sophisticated query specifications in a data source-agnostic manner. These `Criteria` objects can then be processed by a `CriteriaTranslator` to generate queries for various data sources.
 
 ## Key Features
 
-- **Type-Safe Repository Pattern:** Provides a strongly-typed contract for data access operations
-- **Powerful Filtering:** Build complex queries with a fluent criteria interface
-- **Flexible Join System:** Support for various join types and pivot tables
-- **Data Source Agnostic:** Works with any data source through adapters
-- **Full TypeScript Support:** Compile-time validation and autocomplete
+- **Type-Safe Criteria Building:** Construct queries with a fluent, strongly-typed interface.
+- **Powerful Filtering:** Define intricate filtering logic with multiple operators and grouping.
+- **Flexible Join System:** Support for various join types (inner, left, full outer) and pivot table configurations.
+- **Data Source Agnostic:** Design criteria independently of the underlying data source.
+- **Translator-Based Architecture:** Implement custom `CriteriaTranslator` instances to convert criteria into specific query languages (e.g., SQL, NoSQL queries, ORM-specific queries).
+- **Full TypeScript Support:** Benefit from compile-time validation and autocompletion.
 
 ## Core Concepts
 
+### CriteriaTranslator (Interface)
+
+The library provides a `CriteriaTranslator` interface. You (or the community) will implement this interface to convert `Criteria` objects into queries for specific data sources (e.g., SQL, TypeORM QueryBuilder, MongoDB queries).
+
+## Usage Example
+
 ### Schemas
 
-Schemas define the structure and relationships of your data entities:
+Schemas define the structure, available fields, and potential join relationships of your data entities. This enables type-safe criteria construction.
+
+## Usage Example
 
 ```typescript
 export const UserSchema = {
@@ -38,11 +47,46 @@ export const UserSchema = {
     { alias: 'addresses', with_pivot: false },
   ],
 } as const;
+
+export const PermissionSchema = {
+  source_name: 'permission',
+  alias: ['permissions'],
+  fields: ['uuid', 'name'],
+  joins: [{ alias: 'users', with_pivot: true }],
+} as const;
+
+export const DirectionSchema = {
+  source_name: 'direction',
+  alias: ['address'],
+  fields: ['uuid', 'direction', 'user_uuid'],
+  joins: [{ alias: 'users', with_pivot: false }],
+} as const;
+
+const PostSchema = {
+  source_name: 'post',
+  alias: ['posts'],
+  fields: ['uuid', 'title', 'body'],
+  joins: [
+    { alias: 'comments', with_pivot: false },
+    { alias: 'publisher', with_pivot: false },
+  ],
+} as const;
+
+const CommentSchema = {
+  source_name: 'comment',
+  alias: ['comments'],
+  fields: ['uuid', 'comment_text'],
+  joins: [{ alias: 'user', with_pivot: false }],
+} as const;
 ```
 
 ### Criteria
 
-Build type-safe queries using the criteria module:
+Build type-safe query specifications using the `Criteria` class.
+
+## Usage
+
+### Basic Example
 
 ```typescript
 import { Criteria, FilterOperator } from 'repository-criteria-interface';
@@ -59,49 +103,14 @@ const criteria = Criteria.Create(UserSchema, 'users')
   });
 ```
 
-## Usage
-
-### Basic Example
+### Advanced Joins Example with order and offset pagination
 
 ```typescript
-import { Criteria, FilterOperator } from 'repository-criteria-interface';
-import { PostRepository } from './repositories/post.repository';
-// Define your schema
-const PostSchema = {
-  source_name: 'post',
-  alias: ['posts'],
-  fields: ['uuid', 'title', 'body'],
-  joins: [
-    { alias: 'comments', with_pivot: false },
-    { alias: 'publisher', with_pivot: false },
-  ],
-} as const;
-// Create criteria with filtering
-const criteria = Criteria.Create(PostSchema, 'posts').where({
-  field: 'uuid',
-  operator: FilterOperator.EQUALS,
-  value: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-});
-// Use repository to fetch data
-const post = await PostRepository.matchingOne(criteria);
-```
-
-### Advanced Joins Example
-
-```typescript
-// Define related schemas
-const CommentSchema = {
-  source_name: 'comment',
-  alias: ['comments'],
-  fields: ['uuid', 'comment_text'],
-  joins: [{ alias: 'user', with_pivot: false }],
-} as const;
-// Create criteria with nested joins
 const criteriaWithJoins = Criteria.Create(PostSchema, 'posts')
   .where({
-    field: 'uuid',
-    operator: FilterOperator.EQUALS,
-    value: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
+    field: 'title',
+    operator: FilterOperator.LIKE,
+    value: 'New NPM Package Released',
   })
   .join(
     Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
@@ -109,15 +118,15 @@ const criteriaWithJoins = Criteria.Create(PostSchema, 'posts')
       { parent_field: 'uuid', join_field: 'uuid' },
     ),
     { parent_field: 'uuid', join_field: 'uuid' },
-  );
-// Fetch post with comments and their users
-const postWithComments = await PostRepository.matchingOne(criteriaWithJoins);
+  )
+  .orderBy('uuid', 'ASC')
+  .setSkip(10)
+  .setTake(3);
 ```
 
 ### Many-to-Many Relationship Example
 
 ```typescript
-// Example with pivot table (many-to-many relationship)
 const userCriteria = Criteria.Create(UserSchema, 'users')
   .where({
     field: 'email',
@@ -135,29 +144,27 @@ const userCriteria = Criteria.Create(UserSchema, 'users')
       reference: 'uuid',
     },
   });
-
-const userWithPermissions = await UserRepository.matchingOne(userCriteria);
 ```
 
 ## Type Safety Features
 
-- Compile-time validation of field names
-- Type-checked join configurations
-- Autocomplete support for schema fields and relationships
-- Validation of join compatibility between entities
+- Compile-time validation of field names within criteria based on schemas
+- Type-checked join configurations ensuring compatibility between schemas.
+- Autocomplete support for schema fields and defined join aliases.
+- Validation of join parameters based on schema definitions (simple vs. pivot joins).
 
 ## Roadmap
 
-- [ ] Add common repository method implementations
-- [ ] Implement database adapters (MySQL, PostgreSQL, MongoDB)
-- [ ] Implement ORM adapters (TypeORM, Prisma, Sequelize)
-- [ ] Add more complex filtering capabilities
-- [ ] Implement pagination support
-- [ ] Add more comprehensive test coverage
+- [ ] Provide example translator implementations (e.g., for a common ORM or SQL dialect).
+- [ ] Implement cursor pagination ability
+- [ ] Enhance documentation with more detailed examples for translator development.
+- [ ] Add more complex filtering capabilities (e.g., nested logical groups directly in where clauses).
+- [ ] Explore utility functions to simplify translator development.
+- [ ] Add more comprehensive test coverage for criteria construction and edge cases.
 
 ## Contributing
 
-This project is in early development. Contributions are welcome! Please feel free to submit a Pull Request on our [GitHub repository](https://github.com/Techscq/repository-criteria-interface).
+This project is in early development. Contributions are welcome! Please feel free to submit a Pull Request on our [GitHub repository](https://github.com/Techscq/translatable-criteria).
 
 ## License
 

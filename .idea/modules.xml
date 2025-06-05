@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/repository-criteria-interface.iml" filepath="$PROJECT_DIR$/.idea/repository-criteria-interface.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/translatable-criteria.iml" filepath="$PROJECT_DIR$/.idea/translatable-criteria.iml" />
     </modules>
   </component>
 </project>

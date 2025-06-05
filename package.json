@@ -1,19 +1,20 @@
 {
-  "name": "repository-criteria-interface",
+  "name": "translatable-criteria",
   "version": "0.0.1",
   "license": "MIT",
-  "description": "A library providing an interface for the Repository Pattern with powerful data filtering and join capabilities using a criteria module and adapter-based architecture.",
+  "description": "A TypeScript library for building data-source agnostic, translatable query criteria. Define complex filtering, ordering, and join logic in a structured, type-safe way, then translate it to your specific data source using custom translators.",
   "keywords": [
-    "repository",
-    "pattern",
-    "data-access",
-    "orm",
-    "database",
+    "criteria",
     "query",
     "filter",
-    "criteria",
     "join",
-    "adapter",
+    "translator",
+    "data-access",
+    "query-builder",
+    "typescript",
+    "dsl",
+    "database",
+    "agnostic",
     "data-source-agnostic"
   ],
   "main": "./dist/index.js",
@@ -32,16 +33,17 @@
     "check-exports": "attw --pack . --ignore-rules=cjs-resolves-to-esm",
     "test": "vitest run",
     "dev": "vitest",
+    "build-watch": "tsc --watch",
     "check-circular": "npx madge --circular --extensions ts ./src"
   },
-  "homepage": "https://github.com/Techscq/repository-criteria-interface",
+  "homepage": "https://github.com/Techscq/translatable-criteria",
   "bugs": {
-    "url": "https://github.com/Techscq/repository-criteria-interface/issues"
+    "url": "https://github.com/Techscq/translatable-criteria/issues"
   },
   "author": "Nelson Cabrera <contact@nelsoncabrera.dev>",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Techscq/repository-criteria-interface.git"
+    "url": "git+https://github.com/Techscq/translatable-criteria.git"
   },
   "files": [
     "dist",
@@ -54,6 +56,7 @@
     "madge": "^8.0.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.3",
+    "uuid": "^11.1.0",
     "vitest": "^3.2.0"
   }
 }

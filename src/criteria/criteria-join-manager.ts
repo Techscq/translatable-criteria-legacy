@@ -1,13 +1,13 @@
-import type { AliasOfSchema, CriteriaSchema } from './schema.types.js';
-import type { IJoinManager } from './criteria-manager.types.js';
+import type { AliasOfSchema, CriteriaSchema } from './types/schema.types.js';
+import type { IJoinManager } from './types/criteria-manager.types.js';
 import type {
+  ICriteriaBase,
   JoinCriteriaParameterType,
   JoinParameterType,
   SpecificMatchingJoinConfig,
   StoredJoinDetails,
-} from './criteria-join.types.js';
-import type { ICriteriaBase } from './criteria-common.types.js';
-import { CriteriaType } from './criteria.types.js';
+} from './types/criteria-common.types.js';
+import { CriteriaType } from './types/criteria.types.js';
 
 function isICriteria<
   JoinSchema extends CriteriaSchema,

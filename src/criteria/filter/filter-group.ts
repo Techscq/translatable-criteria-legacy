@@ -1,9 +1,9 @@
-import { LogicalOperator } from './operators.types.js';
+import { LogicalOperator } from '../types/operators.types.js';
 import { Filter, type FilterPrimitive } from './filter.js';
 
 export type FilterGroupPrimitive<T extends string = string> = {
   readonly logicalOperator: LogicalOperator;
-  readonly items: ReadonlyArray<FilterPrimitive<T> | FilterGroupPrimitive>;
+  readonly items: ReadonlyArray<FilterPrimitive<T> | FilterGroupPrimitive<T>>;
 };
 
 export class FilterGroup {
@@ -27,12 +27,7 @@ export class FilterGroup {
   toPrimitive(): FilterGroupPrimitive {
     return {
       logicalOperator: this._logicalOperator,
-      items: this._items.map((item) => {
-        if (item instanceof FilterGroup) {
-          return item.toPrimitive();
-        }
-        return item.toPrimitive();
-      }),
+      items: this._items.map((item) => item.toPrimitive()),
     };
   }
 

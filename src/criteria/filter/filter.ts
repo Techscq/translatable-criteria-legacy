@@ -1,4 +1,4 @@
-import { FilterOperator } from './operators.types.js';
+import { FilterOperator } from '../types/operators.types.js';
 
 export type FilterValue =
   | string

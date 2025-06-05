@@ -1,5 +1,5 @@
 import { Filter, type FilterPrimitive } from '../filter.js';
-import { FilterOperator, LogicalOperator } from '../criteria.types.js';
+import { FilterOperator, LogicalOperator } from '../../types/criteria.types.js';
 import { FilterGroup, type FilterGroupPrimitive } from '../filter-group.js';
 
 describe('FilterGroup', () => {

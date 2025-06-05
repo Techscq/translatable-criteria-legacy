@@ -1,4 +1,4 @@
-import { FilterOperator } from '../criteria.types.js';
+import { FilterOperator } from '../../types/criteria.types.js';
 import { Filter, type FilterPrimitive } from '../filter.js';
 
 describe('Filter', () => {

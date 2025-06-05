@@ -1,20 +1,23 @@
-import type { FilterPrimitive } from './filter.js';
+import type { FilterPrimitive } from './filter/filter.js';
 import type {
   AliasOfSchema,
   CriteriaSchema,
   FieldOfSchema,
-} from './schema.types.js';
-import { Order } from './order.js';
+} from './types/schema.types.js';
+import { Order, OrderDirection } from './order/order.js';
+import { CriteriaFilterManager } from './criteria-filter-manager.js';
+import { CriteriaJoinManager } from './criteria-join-manager.js';
 import type {
+  IFilterManager,
+  IJoinManager,
+} from './types/criteria-manager.types.js';
+import type {
+  ICriteriaBase,
   JoinCriteriaParameterType,
   JoinParameterType,
   SpecificMatchingJoinConfig,
-} from './criteria-join.types.js';
-import { CriteriaFilterManager } from './criteria-filter-manager.js';
-import { CriteriaJoinManager } from './criteria-join-manager.js';
-import type { IFilterManager, IJoinManager } from './criteria-manager.types.js';
-import type { ICriteriaBase } from './criteria-common.types.js';
-import { CriteriaType } from './criteria.types.js';
+} from './types/criteria-common.types.js';
+import { CriteriaType } from './types/criteria.types.js';
 
 export class Criteria<
   CSchema extends CriteriaSchema,
@@ -26,51 +29,52 @@ export class Criteria<
     | (typeof CriteriaType.JOIN)[keyof typeof CriteriaType.JOIN],
 > implements ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>
 {
-  private readonly filterManager: IFilterManager<CSchema>;
-  private readonly joinManager: IJoinManager<CSchema>;
-  private readonly _take: number = 1;
-  private readonly _skip: number = 0;
-  private readonly _orders: ReadonlyArray<Order<string>> = [];
+  private readonly _filterManager: IFilterManager<CSchema>;
+  private readonly _joinManager: IJoinManager<CSchema>;
+  private readonly _source_name: CSchema['source_name'];
 
   protected constructor(
     protected readonly _schema: CSchema,
     protected _alias: CurrentAlias,
     protected _criteriaType: TCriteriaType,
   ) {
-    this.filterManager = new CriteriaFilterManager<CSchema>();
-    this.joinManager = new CriteriaJoinManager<CSchema>();
+    this._source_name = _schema.source_name;
+    this._filterManager = new CriteriaFilterManager<CSchema>();
+    this._joinManager = new CriteriaJoinManager<CSchema>();
+  }
+
+  private _take: number = 1;
+
+  get take() {
+    return this._take;
+  }
+
+  private _skip: number = 0;
+
+  get skip() {
+    return this._skip;
+  }
+
+  private _orders: Array<Order<string>> = [];
+
+  get orders() {
+    return this._orders;
+  }
+
+  get joins() {
+    return this._joinManager.getJoins();
   }
 
   get type() {
     return this._criteriaType;
   }
 
-  get schema() {
-    return this._schema;
-  }
-
-  get orders() {
-    return this._orders;
-  }
-
-  get take() {
-    return this._take;
-  }
-
-  get skip() {
-    return this._skip;
-  }
-
   get rootFilterGroup() {
-    return this.filterManager.getRootFilterGroup();
-  }
-
-  get joins() {
-    return this.joinManager.getJoins();
+    return this._filterManager.getRootFilterGroup();
   }
 
   get sourceName() {
-    return this.schema.source_name;
+    return this._source_name;
   }
 
   get alias() {
@@ -116,25 +120,41 @@ export class Criteria<
   ): Criteria<CSchema, CurrentAlias, typeof CriteriaType.JOIN.FULL_OUTER> {
     return new Criteria(criteriaSchema, alias, CriteriaType.JOIN.FULL_OUTER);
   }
+  setTake(amount: number): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType> {
+    this._take = amount;
+    return this;
+  }
+  setSkip(amount: number): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType> {
+    this._skip = amount;
+    return this;
+  }
+
+  orderBy(
+    field: FieldOfSchema<CSchema>,
+    direction: OrderDirection,
+  ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
+    this._orders.push(new Order(direction, field));
+    return this;
+  }
 
   where(
     filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this.filterManager.where(filterOrGroupPrimitive);
+    this._filterManager.where(filterOrGroupPrimitive);
     return this;
   }
 
   andWhere(
     filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this.filterManager.andWhere(filterOrGroupPrimitive);
+    this._filterManager.andWhere(filterOrGroupPrimitive);
     return this;
   }
 
   orWhere(
     filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this.filterManager.orWhere(filterOrGroupPrimitive);
+    this._filterManager.orWhere(filterOrGroupPrimitive);
     return this;
   }
 
@@ -154,7 +174,7 @@ export class Criteria<
     >,
     joinParameter: JoinParameterType<CSchema, JoinSchema, TMatchingJoinConfig>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this.joinManager.addJoin(criteriaToJoin, joinParameter);
+    this._joinManager.addJoin(criteriaToJoin, joinParameter);
     return this;
   }
 }

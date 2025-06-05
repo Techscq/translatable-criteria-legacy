@@ -17,7 +17,9 @@
     "outDir": "dist",
     "rootDir": "src",
     "sourceMap": true,
-
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnusedLabels": false,
     "declaration": true,
     "declarationMap": true,
     "types": ["vitest/globals"],
@@ -30,6 +32,10 @@
     "vitest.config.d.ts",
     "vitest.config.d.ts.map",
     "vitest.config.js",
-    "vitest.config.js.map"
+    "vitest.config.js.map",
+    "**/*.test.ts",
+    "**/test",
+    "**/infrastructure",
+    "**/repository"
   ]
 }

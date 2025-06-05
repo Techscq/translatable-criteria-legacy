@@ -1,12 +1,12 @@
 import { Criteria } from '../criteria.js';
-import { CommentSchema, PostSchema, UserSchema } from './dummy/dummy.schema.js';
+import { CommentSchema, PostSchema, UserSchema } from './fake/fake.schema.js';
 import {
   CriteriaType,
   FilterOperator,
   LogicalOperator,
-} from '../criteria.types.js';
-import type { StoredJoinDetails } from '../criteria-join.types.js';
-import { FilterGroup } from '../filter-group.js';
+} from '../types/criteria.types.js';
+import type { StoredJoinDetails } from '../types/criteria-common.types.js';
+import { FilterGroup } from '../filter/filter-group.js';
 
 describe('Criteria', () => {
   let rootCriteria: Criteria<typeof PostSchema, 'posts'>;
@@ -18,7 +18,7 @@ describe('Criteria', () => {
   it('should be created with ROOT type', () => {
     expect(rootCriteria).toBeInstanceOf(Criteria);
     expect(rootCriteria.type).toBe(CriteriaType.ROOT);
-    expect(rootCriteria.schema).toBe(PostSchema);
+    expect(rootCriteria.sourceName).toBe(PostSchema.source_name);
     expect(rootCriteria.alias).toBe('posts');
     expect(rootCriteria.sourceName).toBe('post');
   });

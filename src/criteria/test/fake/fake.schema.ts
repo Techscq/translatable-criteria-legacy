@@ -1,10 +1,7 @@
-import { Criteria } from '../../criteria.js';
-import { FilterOperator } from '../../criteria.types.js';
-
 export const PostSchema = {
   source_name: 'post',
   alias: ['posts'],
-  fields: ['uuid', 'title', 'body'],
+  fields: ['uuid', 'title', 'body', 'user_uuid'],
   joins: [
     { alias: 'comments', with_pivot: false },
     { alias: 'publisher', with_pivot: false },
@@ -14,7 +11,7 @@ export const PostSchema = {
 export const CommentSchema = {
   source_name: 'comment',
   alias: ['comments'],
-  fields: ['uuid', 'comment_text'],
+  fields: ['uuid', 'comment_text', 'post_uuid', 'user_uuid', 'comment_uuid'],
   joins: [
     { alias: 'comments', with_pivot: false },
     { alias: 'users', with_pivot: false },
@@ -24,7 +21,7 @@ export const CommentSchema = {
 export const UserSchema = {
   source_name: 'user',
   alias: ['users', 'publisher'],
-  fields: ['uuid', 'email', 'username'],
+  fields: ['uuid', 'email', 'username', 'direction_uuid'],
   joins: [
     {
       alias: 'permissions',
@@ -32,6 +29,10 @@ export const UserSchema = {
     },
     {
       alias: 'address',
+      with_pivot: false,
+    },
+    {
+      alias: 'posts',
       with_pivot: false,
     },
   ],
@@ -50,9 +51,9 @@ export const PermissionSchema = {
 } as const;
 
 export const DirectionSchema = {
-  source_name: 'directions',
+  source_name: 'direction',
   alias: ['address'],
-  fields: ['uuid', 'direction'],
+  fields: ['uuid', 'direction', 'user_uuid'],
   joins: [
     {
       alias: 'users',
@@ -60,7 +61,7 @@ export const DirectionSchema = {
     },
   ],
 } as const;
-
+/*
 Criteria.Create(PostSchema, 'posts')
   .where({
     field: 'uuid',
@@ -71,13 +72,13 @@ Criteria.Create(PostSchema, 'posts')
     Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
       Criteria.CreateInnerJoin(UserSchema, 'users'),
       {
-        parent_field: 'uuid',
+        parent_field: 'user_uuid',
         join_field: 'uuid',
       },
     ),
     {
       parent_field: 'uuid',
-      join_field: 'uuid',
+      join_field: 'post_uuid',
     },
   );
 
@@ -91,4 +92,4 @@ Criteria.Create(UserSchema, 'users')
     join_source_name: 'permission_user',
     join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
     parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
-  });
+  });*/
