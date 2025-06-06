@@ -38,46 +38,70 @@ Schemas define the structure, available fields, and potential join relationships
 ## Usage Example
 
 ```typescript
-export const UserSchema = {
-  source_name: 'user',
-  alias: ['users', 'publisher'],
-  fields: ['uuid', 'email', 'username'],
+import { GetTypedCriteriaSchema } from 'repository-criteria-interface'; // Adjust path if needed
+export const PostSchema = GetTypedCriteriaSchema({
+  source_name: 'post',
+  alias: ['posts'],
+  fields: ['uuid', 'title', 'body', 'user_uuid'],
   joins: [
-    { alias: 'permissions', with_pivot: true },
-    { alias: 'addresses', with_pivot: false },
+    { alias: 'comments', join_relation_type: 'one_to_many' },
+    { alias: 'publisher', join_relation_type: 'many_to_one' },
   ],
-} as const;
+});
 
-export const PermissionSchema = {
+export const CommentSchema = GetTypedCriteriaSchema({
+  source_name: 'comment',
+  alias: ['comments'],
+  fields: ['uuid', 'comment_text', 'post_uuid', 'user_uuid', 'comment_uuid'],
+  joins: [
+    { alias: 'comments', join_relation_type: 'one_to_many' },
+    { alias: 'user', join_relation_type: 'many_to_one' },
+  ],
+});
+
+export const UserSchema = GetTypedCriteriaSchema({
+  source_name: 'user',
+  alias: ['users', 'publisher', 'user'],
+  fields: ['uuid', 'email', 'username', 'direction_uuid'],
+  joins: [
+    {
+      alias: 'permissions',
+      join_relation_type: 'many_to_many',
+    },
+    {
+      alias: 'address',
+      join_relation_type: 'one_to_many',
+    },
+    {
+      alias: 'posts',
+      join_relation_type: 'one_to_many',
+    },
+  ],
+});
+
+export const PermissionSchema = GetTypedCriteriaSchema({
   source_name: 'permission',
   alias: ['permissions'],
   fields: ['uuid', 'name'],
-  joins: [{ alias: 'users', with_pivot: true }],
-} as const;
+  joins: [
+    {
+      alias: 'users',
+      join_relation_type: 'many_to_many',
+    },
+  ],
+});
 
-export const DirectionSchema = {
+export const DirectionSchema = GetTypedCriteriaSchema({
   source_name: 'direction',
   alias: ['address'],
   fields: ['uuid', 'direction', 'user_uuid'],
-  joins: [{ alias: 'users', with_pivot: false }],
-} as const;
-
-const PostSchema = {
-  source_name: 'post',
-  alias: ['posts'],
-  fields: ['uuid', 'title', 'body'],
   joins: [
-    { alias: 'comments', with_pivot: false },
-    { alias: 'publisher', with_pivot: false },
+    {
+      alias: 'users',
+      join_relation_type: 'many_to_one',
+    },
   ],
-} as const;
-
-const CommentSchema = {
-  source_name: 'comment',
-  alias: ['comments'],
-  fields: ['uuid', 'comment_text'],
-  joins: [{ alias: 'user', with_pivot: false }],
-} as const;
+});
 ```
 
 ### Criteria
@@ -97,6 +121,7 @@ const criteria = Criteria.Create(UserSchema, 'users')
     value: 'contact@nelsoncabrera.dev',
   })
   .join(Criteria.CreateInnerJoin(PermissionSchema, 'permissions'), {
+    parent_to_join_relation_type: 'many_to_many',
     join_source_name: 'permission_user',
     join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
     parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
@@ -115,9 +140,17 @@ const criteriaWithJoins = Criteria.Create(PostSchema, 'posts')
   .join(
     Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
       Criteria.CreateInnerJoin(UserSchema, 'user'),
-      { parent_field: 'uuid', join_field: 'uuid' },
+      {
+        parent_to_join_relation_type: 'many_to_one',
+        parent_field: 'uuid',
+        join_field: 'uuid',
+      },
     ),
-    { parent_field: 'uuid', join_field: 'uuid' },
+    {
+      parent_to_join_relation_type: 'one_to_many',
+      parent_field: 'uuid',
+      join_field: 'uuid',
+    },
   )
   .orderBy('uuid', 'ASC')
   .setSkip(10)
@@ -127,13 +160,14 @@ const criteriaWithJoins = Criteria.Create(PostSchema, 'posts')
 ### Many-to-Many Relationship Example
 
 ```typescript
-const userCriteria = Criteria.Create(UserSchema, 'users')
+const userCriteriaWithPermissions = Criteria.Create(UserSchema, 'users')
   .where({
     field: 'email',
     operator: FilterOperator.EQUALS,
     value: 'contact@nelsoncabrera.dev',
   })
-  .join(Criteria.CreateInnerJoin(PermissionSchema, 'permissions'), {
+  .join(Criteria.CreateLeftJoin(PermissionSchema, 'permissions'), {
+    parent_to_join_relation_type: 'many_to_many',
     join_source_name: 'permission_user', // pivot table name
     join_field: {
       pivot_field: 'permission_uuid',

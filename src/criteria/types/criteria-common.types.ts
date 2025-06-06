@@ -2,6 +2,7 @@ import type {
   AliasOfSchema,
   CriteriaSchema,
   FieldOfSchema,
+  JoinRelationType,
   SchemaJoins,
 } from './schema.types.js';
 import type { CriteriaType } from './criteria.types.js';
@@ -16,8 +17,8 @@ export interface StoredJoinDetails<ParentSchema extends CriteriaSchema> {
     typeof CriteriaType.ROOT
   >;
   parameters:
-    | PivotJoin<ParentSchema, CriteriaSchema>
-    | SimpleJoin<ParentSchema, CriteriaSchema>;
+    | PivotJoin<ParentSchema, CriteriaSchema, JoinRelationType>
+    | SimpleJoin<ParentSchema, CriteriaSchema, JoinRelationType>;
   criteria: ICriteriaBase<
     CriteriaSchema,
     AliasOfSchema<CriteriaSchema>,
@@ -96,9 +97,17 @@ export type JoinParameterType<
   MatchingJoinConfig extends SchemaJoins<string> | never,
 > = [MatchingJoinConfig] extends [never]
   ? never
-  : MatchingJoinConfig['with_pivot'] extends true
-    ? PivotJoin<ParentSchema, JoinedSchema>
-    : SimpleJoin<ParentSchema, JoinedSchema>;
+  : MatchingJoinConfig['join_relation_type'] extends 'many_to_many'
+    ? PivotJoin<
+        ParentSchema,
+        JoinedSchema,
+        MatchingJoinConfig['join_relation_type']
+      >
+    : SimpleJoin<
+        ParentSchema,
+        JoinedSchema,
+        MatchingJoinConfig['join_relation_type']
+      >;
 
 export type SpecificMatchingJoinConfig<
   ParentSchema extends CriteriaSchema,

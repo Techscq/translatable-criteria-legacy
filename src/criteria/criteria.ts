@@ -37,7 +37,7 @@ export class Criteria<
     this._source_name = _schema.source_name;
   }
 
-  private _take: number = 1;
+  private _take: number = 0; // 0 = no limit
 
   get take() {
     return this._take;

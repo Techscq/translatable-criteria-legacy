@@ -29,8 +29,5 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: List build output
-        run: ls -R dist
-
       - name: Run CI
         run: npm run ci

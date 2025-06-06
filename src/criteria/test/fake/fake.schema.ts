@@ -1,66 +1,68 @@
-export const PostSchema = {
+import { GetTypedCriteriaSchema } from '../../types/schema.types.js';
+
+export const PostSchema = GetTypedCriteriaSchema({
   source_name: 'post',
   alias: ['posts'],
   fields: ['uuid', 'title', 'body', 'user_uuid'],
   joins: [
-    { alias: 'comments', with_pivot: false },
-    { alias: 'publisher', with_pivot: false },
+    { alias: 'comments', join_relation_type: 'one_to_many' },
+    { alias: 'publisher', join_relation_type: 'many_to_one' },
   ],
-} as const;
+});
 
-export const CommentSchema = {
+export const CommentSchema = GetTypedCriteriaSchema({
   source_name: 'comment',
   alias: ['comments'],
   fields: ['uuid', 'comment_text', 'post_uuid', 'user_uuid', 'comment_uuid'],
   joins: [
-    { alias: 'comments', with_pivot: false },
-    { alias: 'users', with_pivot: false },
+    { alias: 'comments', join_relation_type: 'one_to_many' },
+    { alias: 'user', join_relation_type: 'many_to_one' },
   ],
-} as const;
+});
 
-export const UserSchema = {
+export const UserSchema = GetTypedCriteriaSchema({
   source_name: 'user',
-  alias: ['users', 'publisher'],
+  alias: ['users', 'publisher', 'user'],
   fields: ['uuid', 'email', 'username', 'direction_uuid'],
   joins: [
     {
       alias: 'permissions',
-      with_pivot: true,
+      join_relation_type: 'many_to_many',
     },
     {
       alias: 'address',
-      with_pivot: false,
+      join_relation_type: 'one_to_many',
     },
     {
       alias: 'posts',
-      with_pivot: false,
+      join_relation_type: 'one_to_many',
     },
   ],
-} as const;
+});
 
-export const PermissionSchema = {
+export const PermissionSchema = GetTypedCriteriaSchema({
   source_name: 'permission',
   alias: ['permissions'],
   fields: ['uuid', 'name'],
   joins: [
     {
       alias: 'users',
-      with_pivot: true,
+      join_relation_type: 'many_to_many',
     },
   ],
-} as const;
+});
 
-export const DirectionSchema = {
+export const DirectionSchema = GetTypedCriteriaSchema({
   source_name: 'direction',
   alias: ['address'],
   fields: ['uuid', 'direction', 'user_uuid'],
   joins: [
     {
       alias: 'users',
-      with_pivot: false,
+      join_relation_type: 'many_to_one',
     },
   ],
-} as const;
+});
 /*
 Criteria.Create(PostSchema, 'posts')
   .where({
