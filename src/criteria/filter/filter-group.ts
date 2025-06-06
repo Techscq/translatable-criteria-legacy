@@ -24,6 +24,23 @@ export class FilterGroup {
     return this._items;
   }
 
+  get logicalOperator(): LogicalOperator {
+    return this._logicalOperator;
+  }
+
+  /**
+   * Creates the initial FilterGroup, typically for a 'where' clause.
+   * The root is an AND group with the single new filter.
+   */
+  public static createInitial(
+    newFilterPrimitive: FilterPrimitive,
+  ): FilterGroup {
+    return new FilterGroup({
+      logicalOperator: LogicalOperator.AND,
+      items: [newFilterPrimitive],
+    });
+  }
+
   toPrimitive(): FilterGroupPrimitive {
     return {
       logicalOperator: this._logicalOperator,
@@ -31,52 +48,108 @@ export class FilterGroup {
     };
   }
 
-  get logicalOperator(): LogicalOperator {
-    return this._logicalOperator;
-  }
+  /**
+   * Adds a filter with an AND condition to the current group.
+   * Returns a new FilterGroup instance.
+   */
+  public addAnd(newFilterPrimitive: FilterPrimitive): FilterGroup {
+    const currentRootPrimitive = this.toPrimitive();
 
-  private static FromPrimitive(groupPrimitive: FilterGroupPrimitive) {
-    return new FilterGroup(groupPrimitive);
-  }
-
-  static getUpdatedFilter(
-    currentRootPrimitive: FilterGroupPrimitive | undefined,
-    operation: 'replace' | 'and' | 'or',
-    newFilterOrGroup: FilterPrimitive | FilterGroupPrimitive,
-  ): FilterGroup {
     if (
-      !(operation === 'replace' || operation === 'and' || operation === 'or')
+      currentRootPrimitive.items.length === 0 &&
+      currentRootPrimitive.logicalOperator === LogicalOperator.AND
     ) {
-      throw new Error('Invalid operation');
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.AND,
+        items: [newFilterPrimitive],
+      });
     }
 
-    const newItemGroupPrimitive: FilterGroupPrimitive =
-      'logicalOperator' in newFilterOrGroup
-        ? newFilterOrGroup
-        : { logicalOperator: LogicalOperator.AND, items: [newFilterOrGroup] };
-
-    if (operation === 'replace') {
-      return FilterGroup.FromPrimitive(newItemGroupPrimitive);
-    }
-
-    if (!currentRootPrimitive) {
-      if (operation === 'or') {
-        return newItemGroupPrimitive.logicalOperator === LogicalOperator.OR
-          ? FilterGroup.FromPrimitive(newItemGroupPrimitive)
-          : FilterGroup.FromPrimitive({
-              logicalOperator: LogicalOperator.OR,
-              items: [newItemGroupPrimitive],
-            });
+    if (currentRootPrimitive.logicalOperator === LogicalOperator.AND) {
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.AND,
+        items: [...currentRootPrimitive.items, newFilterPrimitive],
+      });
+    } else {
+      const currentItems = [...currentRootPrimitive.items];
+      if (currentItems.length === 0) {
+        return new FilterGroup({
+          logicalOperator: LogicalOperator.OR,
+          items: [
+            {
+              logicalOperator: LogicalOperator.AND,
+              items: [newFilterPrimitive],
+            },
+          ],
+        });
       }
-      return FilterGroup.FromPrimitive(newItemGroupPrimitive);
+
+      const lastItemIndex = currentItems.length - 1;
+      const originalLastItem = currentItems[lastItemIndex]!;
+      let newLastBranch: FilterGroupPrimitive;
+
+      if (
+        'logicalOperator' in originalLastItem &&
+        originalLastItem.logicalOperator === LogicalOperator.AND
+      ) {
+        newLastBranch = {
+          ...originalLastItem,
+          items: [...originalLastItem.items, newFilterPrimitive],
+        };
+      } else if (!('logicalOperator' in originalLastItem)) {
+        newLastBranch = {
+          logicalOperator: LogicalOperator.AND,
+          items: [originalLastItem, newFilterPrimitive],
+        };
+      } else {
+        currentItems.push({
+          logicalOperator: LogicalOperator.AND,
+          items: [newFilterPrimitive],
+        });
+        return new FilterGroup({
+          logicalOperator: LogicalOperator.OR,
+          items: currentItems,
+        });
+      }
+      currentItems[lastItemIndex] = newLastBranch;
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.OR,
+        items: currentItems,
+      });
+    }
+  }
+
+  /**
+   * Adds a filter with an OR condition to the current group.
+   * Returns a new FilterGroup instance.
+   */
+  public addOr(newFilterPrimitive: FilterPrimitive): FilterGroup {
+    const currentRootPrimitive = this.toPrimitive();
+    const newBranchForOr: FilterGroupPrimitive = {
+      logicalOperator: LogicalOperator.AND,
+      items: [newFilterPrimitive],
+    };
+
+    if (
+      currentRootPrimitive.items.length === 0 &&
+      currentRootPrimitive.logicalOperator === LogicalOperator.AND
+    ) {
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.OR,
+        items: [newBranchForOr],
+      });
     }
 
-    const resultingLogicalOperator =
-      operation === 'and' ? LogicalOperator.AND : LogicalOperator.OR;
-
-    return FilterGroup.FromPrimitive({
-      logicalOperator: resultingLogicalOperator,
-      items: [currentRootPrimitive, newItemGroupPrimitive],
-    });
+    if (currentRootPrimitive.logicalOperator === LogicalOperator.OR) {
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.OR,
+        items: [...currentRootPrimitive.items, newBranchForOr],
+      });
+    } else {
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.OR,
+        items: [currentRootPrimitive, newBranchForOr],
+      });
+    }
   }
 }

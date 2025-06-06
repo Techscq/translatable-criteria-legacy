@@ -8,10 +8,6 @@ import { Order, OrderDirection } from './order/order.js';
 import { CriteriaFilterManager } from './criteria-filter-manager.js';
 import { CriteriaJoinManager } from './criteria-join-manager.js';
 import type {
-  IFilterManager,
-  IJoinManager,
-} from './types/criteria-manager.types.js';
-import type {
   ICriteriaBase,
   JoinCriteriaParameterType,
   JoinParameterType,
@@ -29,8 +25,8 @@ export class Criteria<
     | (typeof CriteriaType.JOIN)[keyof typeof CriteriaType.JOIN],
 > implements ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>
 {
-  private readonly _filterManager: IFilterManager<CSchema>;
-  private readonly _joinManager: IJoinManager<CSchema>;
+  private readonly _filterManager = new CriteriaFilterManager<CSchema>();
+  private readonly _joinManager = new CriteriaJoinManager<CSchema>();
   private readonly _source_name: CSchema['source_name'];
 
   protected constructor(
@@ -39,8 +35,6 @@ export class Criteria<
     protected _criteriaType: TCriteriaType,
   ) {
     this._source_name = _schema.source_name;
-    this._filterManager = new CriteriaFilterManager<CSchema>();
-    this._joinManager = new CriteriaJoinManager<CSchema>();
   }
 
   private _take: number = 1;
@@ -138,23 +132,23 @@ export class Criteria<
   }
 
   where(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
+    filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this._filterManager.where(filterOrGroupPrimitive);
+    this._filterManager.where(filterPrimitive);
     return this;
   }
 
   andWhere(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
+    filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this._filterManager.andWhere(filterOrGroupPrimitive);
+    this._filterManager.andWhere(filterPrimitive);
     return this;
   }
 
   orWhere(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
+    filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): Criteria<CSchema, CurrentAlias, TCriteriaType> {
-    this._filterManager.orWhere(filterOrGroupPrimitive);
+    this._filterManager.orWhere(filterPrimitive);
     return this;
   }
 

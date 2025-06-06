@@ -40,7 +40,7 @@ export interface ICriteriaBase<
   setTake(amount: number): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
   setSkip(amount: number): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
   get joins(): Array<[string, StoredJoinDetails<CSchema>]>;
-  get rootFilterGroup(): FilterGroup | undefined;
+  get rootFilterGroup(): FilterGroup;
   get type(): TCriteriaType;
   get alias(): CurrentAlias;
   get sourceName(): CSchema['source_name'];
@@ -48,13 +48,13 @@ export interface ICriteriaBase<
   get skip(): number;
   get orders(): readonly Order[];
   where(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
+    filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
   andWhere(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
+    filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
   orWhere(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
+    filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
   ): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
   join<
     JoinSchema extends CriteriaSchema,

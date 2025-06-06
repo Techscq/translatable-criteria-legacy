@@ -13,13 +13,22 @@ describe('FilterGroup', () => {
     operator: FilterOperator.EQUALS,
     value: 'active',
   };
-
-  const groupPrimitive: FilterGroupPrimitive = {
-    logicalOperator: LogicalOperator.AND,
-    items: [filter1, filter2],
+  const filter3: FilterPrimitive = {
+    field: 'name',
+    operator: FilterOperator.LIKE,
+    value: '%test%',
   };
 
+  const initialEmptyAndGroup = new FilterGroup({
+    logicalOperator: LogicalOperator.AND,
+    items: [],
+  });
+
   it('should be created from a primitive', () => {
+    const groupPrimitive: FilterGroupPrimitive = {
+      logicalOperator: LogicalOperator.AND,
+      items: [filter1, filter2],
+    };
     const filterGroup = new FilterGroup(groupPrimitive);
     expect(filterGroup).toBeInstanceOf(FilterGroup);
     expect(filterGroup.logicalOperator).toBe(LogicalOperator.AND);
@@ -29,6 +38,10 @@ describe('FilterGroup', () => {
   });
 
   it('should handle nested filter groups', () => {
+    const groupPrimitive: FilterGroupPrimitive = {
+      logicalOperator: LogicalOperator.AND,
+      items: [filter1, filter2],
+    };
     const nestedGroupPrimitive: FilterGroupPrimitive = {
       logicalOperator: LogicalOperator.OR,
       items: [groupPrimitive, filter1],
@@ -41,138 +54,131 @@ describe('FilterGroup', () => {
   });
 
   it('should return its primitive representation', () => {
+    const groupPrimitive: FilterGroupPrimitive = {
+      logicalOperator: LogicalOperator.AND,
+      items: [filter1, filter2],
+    };
     const filterGroup = new FilterGroup(groupPrimitive);
     const resultPrimitive = filterGroup.toPrimitive();
     expect(resultPrimitive).toEqual(groupPrimitive);
   });
 
-  describe('getUpdatedFilter', () => {
-    it('should replace filter when current is undefined', () => {
-      const result = FilterGroup.getUpdatedFilter(
-        undefined,
-        'replace',
-        filter1,
-      );
+  describe('createInitial', () => {
+    it('should create an AND group with the given filter', () => {
+      const result = FilterGroup.createInitial(filter1);
+      expect(result.toPrimitive()).toEqual({
+        logicalOperator: LogicalOperator.AND,
+        items: [filter1],
+      });
+    });
+  });
+
+  describe('addAnd', () => {
+    it('should add filter to an initial empty AND group', () => {
+      const result = initialEmptyAndGroup.addAnd(filter1);
       expect(result.toPrimitive()).toEqual({
         logicalOperator: LogicalOperator.AND,
         items: [filter1],
       });
     });
 
-    it('should replace filter when current exists', () => {
-      const currentGroup = new FilterGroup(groupPrimitive);
-      const result = FilterGroup.getUpdatedFilter(
-        currentGroup.toPrimitive(),
-        'replace',
-        filter1,
-      );
+    it('should add filter to an existing AND group', () => {
+      const currentGroup = FilterGroup.createInitial(filter1);
+      const result = currentGroup.addAnd(filter2);
       expect(result.toPrimitive()).toEqual({
         logicalOperator: LogicalOperator.AND,
-        items: [filter1],
+        items: [filter1, filter2],
       });
     });
 
-    it('should replace with a group', () => {
-      const result = FilterGroup.getUpdatedFilter(
-        undefined,
-        'replace',
-        groupPrimitive,
-      );
-      expect(result.toPrimitive()).toEqual(groupPrimitive);
-    });
-
-    it('should AND a filter when current is undefined', () => {
-      const result = FilterGroup.getUpdatedFilter(undefined, 'and', filter1);
+    it('should add filter to the last AND branch of an OR group', () => {
+      const orGroup = FilterGroup.createInitial(filter1).addOr(filter2);
+      const result = orGroup.addAnd(filter3);
       expect(result.toPrimitive()).toEqual({
-        logicalOperator: LogicalOperator.AND,
-        items: [filter1],
+        logicalOperator: LogicalOperator.OR,
+        items: [
+          { logicalOperator: LogicalOperator.AND, items: [filter1] },
+          { logicalOperator: LogicalOperator.AND, items: [filter2, filter3] },
+        ],
       });
     });
 
-    it('should AND a filter when current exists (as single filter group)', () => {
-      const currentSingleFilterGroup: FilterGroupPrimitive = {
-        logicalOperator: LogicalOperator.AND,
+    it('should convert last primitive item in OR group to AND group and add filter', () => {
+      const orGroupWithPrimitiveAsLastItem = new FilterGroup({
+        logicalOperator: LogicalOperator.OR,
+        items: [
+          { logicalOperator: LogicalOperator.AND, items: [filter2] },
+          filter1,
+        ],
+      });
+
+      const result = orGroupWithPrimitiveAsLastItem.addAnd(filter3);
+
+      expect(result.toPrimitive()).toEqual({
+        logicalOperator: LogicalOperator.OR,
+        items: [
+          { logicalOperator: LogicalOperator.AND, items: [filter2] },
+          { logicalOperator: LogicalOperator.AND, items: [filter1, filter3] },
+        ],
+      });
+    });
+
+    it('should add a new AND branch if last item of OR group is an OR group', () => {
+      const innerOrGroup: FilterGroupPrimitive = {
+        logicalOperator: LogicalOperator.OR,
         items: [filter2],
       };
-      const result = FilterGroup.getUpdatedFilter(
-        currentSingleFilterGroup,
-        'and',
-        filter1,
-      );
-      expect(result.toPrimitive()).toEqual({
-        logicalOperator: LogicalOperator.AND,
+      const orGroup = new FilterGroup({
+        logicalOperator: LogicalOperator.OR,
         items: [
-          currentSingleFilterGroup,
           { logicalOperator: LogicalOperator.AND, items: [filter1] },
+          innerOrGroup,
+        ],
+      });
+      const result = orGroup.addAnd(filter3);
+      expect(result.toPrimitive()).toEqual({
+        logicalOperator: LogicalOperator.OR,
+        items: [
+          { logicalOperator: LogicalOperator.AND, items: [filter1] },
+          innerOrGroup,
+          { logicalOperator: LogicalOperator.AND, items: [filter3] },
         ],
       });
     });
+  });
 
-    it('should AND a group when current exists', () => {
-      const currentGroup = new FilterGroup(groupPrimitive);
-      const result = FilterGroup.getUpdatedFilter(
-        currentGroup.toPrimitive(),
-        'and',
-        filter1,
-      );
-      expect(result.toPrimitive()).toEqual({
-        logicalOperator: LogicalOperator.AND,
-        items: [
-          currentGroup.toPrimitive(),
-          { logicalOperator: LogicalOperator.AND, items: [filter1] },
-        ],
-      });
-    });
-
-    it('should OR a filter when current is undefined', () => {
-      const result = FilterGroup.getUpdatedFilter(undefined, 'or', filter1);
+  describe('addOr', () => {
+    it('should convert an initial empty AND group to OR( AND(filter) )', () => {
+      const result = initialEmptyAndGroup.addOr(filter1);
       expect(result.toPrimitive()).toEqual({
         logicalOperator: LogicalOperator.OR,
         items: [{ logicalOperator: LogicalOperator.AND, items: [filter1] }],
       });
     });
 
-    it('should OR a filter when current exists (as single filter group)', () => {
-      const currentSingleFilterGroup: FilterGroupPrimitive = {
-        logicalOperator: LogicalOperator.AND,
-        items: [filter2],
-      };
-      const result = FilterGroup.getUpdatedFilter(
-        currentSingleFilterGroup,
-        'or',
-        filter1,
-      );
+    it('should convert an existing AND group to OR ( currentAND, newAND(filter) )', () => {
+      const currentGroup = FilterGroup.createInitial(filter1);
+      const result = currentGroup.addOr(filter2);
       expect(result.toPrimitive()).toEqual({
         logicalOperator: LogicalOperator.OR,
         items: [
-          currentSingleFilterGroup,
           { logicalOperator: LogicalOperator.AND, items: [filter1] },
+          { logicalOperator: LogicalOperator.AND, items: [filter2] },
         ],
       });
     });
 
-    it('should OR a group when current exists', () => {
-      const currentGroupPrimitive: FilterGroupPrimitive = {
-        logicalOperator: LogicalOperator.AND,
-        items: [filter2],
-      };
-      const currentGroup = new FilterGroup(currentGroupPrimitive);
-
-      const result = FilterGroup.getUpdatedFilter(
-        currentGroup.toPrimitive(),
-        'or',
-        groupPrimitive,
-      );
+    it('should add a new AND(filter) branch to an existing OR group', () => {
+      const orGroup = FilterGroup.createInitial(filter1).addOr(filter2);
+      const result = orGroup.addOr(filter3);
       expect(result.toPrimitive()).toEqual({
         logicalOperator: LogicalOperator.OR,
-        items: [currentGroup.toPrimitive(), groupPrimitive],
+        items: [
+          { logicalOperator: LogicalOperator.AND, items: [filter1] },
+          { logicalOperator: LogicalOperator.AND, items: [filter2] },
+          { logicalOperator: LogicalOperator.AND, items: [filter3] },
+        ],
       });
-    });
-
-    it('should throw error for invalid operation', () => {
-      expect(() =>
-        FilterGroup.getUpdatedFilter(undefined, 'invalid' as any, filter1),
-      ).toThrow('Invalid operation');
     });
   });
 });

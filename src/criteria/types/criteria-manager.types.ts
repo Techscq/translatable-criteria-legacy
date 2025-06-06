@@ -13,14 +13,10 @@ import type {
 } from './criteria-common.types.js';
 
 export interface IFilterManager<CSchema extends CriteriaSchema> {
-  where(filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>): void;
-  andWhere(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
-  ): void;
-  orWhere(
-    filterOrGroupPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>,
-  ): void;
-  getRootFilterGroup(): FilterGroup | undefined;
+  where(filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>): void;
+  andWhere(filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>): void;
+  orWhere(filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>): void;
+  getRootFilterGroup(): FilterGroup;
 }
 
 export interface IJoinManager<CSchema extends CriteriaSchema> {
