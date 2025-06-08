@@ -1,6 +1,9 @@
 import type { AliasOfSchema, CriteriaSchema } from '../types/schema.types.js';
 import type { CriteriaType } from '../types/criteria.types.js';
-import type { ICriteriaBase } from '../types/criteria-common.types.js';
+import type {
+  ICriteriaBase,
+  ICriteriaVisitor,
+} from '../types/criteria-common.types.js';
 
 export type onlyRootCriteriaType = Exclude<
   typeof CriteriaType.ROOT,
@@ -8,7 +11,7 @@ export type onlyRootCriteriaType = Exclude<
 >;
 
 /**
- * Interface for translating criteria into various query formats
+ * Abstract Class for translating criteria into various query formats
  * @template Source - The target format (e.g., QueryBuilder, raw SQL string, etc.)
  * @template OutPut - The output format by default its Source (Only specify this if
  * you really need something like a memory translator and the output would be different
@@ -25,11 +28,12 @@ export type onlyRootCriteriaType = Exclude<
  *   translate(criteria, sql) { return sql; }
  * }
  */
-export interface CriteriaTranslator<
+export abstract class CriteriaTranslator<
   Source,
-  OutPut = Source,
+  Output = Source,
   RootSchema extends CriteriaSchema = CriteriaSchema,
-> {
+> implements ICriteriaVisitor<Source, Output>
+{
   /**
    * Translates a criteria into the target source format
    * @param criteria - The criteria to translate
@@ -40,8 +44,42 @@ export interface CriteriaTranslator<
     criteria: ICriteriaBase<
       RootSchema,
       AliasOfSchema<RootSchema>,
-      onlyRootCriteriaType
+      typeof CriteriaType.ROOT
     >,
     source: Source,
-  ): OutPut | Promise<OutPut>;
+  ): Output | Promise<Output> {
+    return criteria.accept(this, source);
+  }
+
+  abstract visitRoot(
+    criteria: ICriteriaBase<CriteriaSchema, string, typeof CriteriaType.ROOT>,
+    context: Source,
+  ): Output | Promise<Output>;
+
+  abstract visitInnerJoin(
+    criteria: ICriteriaBase<
+      CriteriaSchema,
+      string,
+      typeof CriteriaType.JOIN.INNER_JOIN
+    >,
+    context: Source,
+  ): Output | Promise<Output>;
+
+  abstract visitLeftJoin(
+    criteria: ICriteriaBase<
+      CriteriaSchema,
+      string,
+      typeof CriteriaType.JOIN.LEFT_JOIN
+    >,
+    context: Source,
+  ): Output | Promise<Output>;
+
+  abstract visitFullOuterJoin(
+    criteria: ICriteriaBase<
+      CriteriaSchema,
+      string,
+      typeof CriteriaType.JOIN.FULL_OUTER
+    >,
+    context: Source,
+  ): Output | Promise<Output>;
 }

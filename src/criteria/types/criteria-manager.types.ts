@@ -1,5 +1,4 @@
 import type { FilterGroup } from '../filter/filter-group.js';
-import type { FilterPrimitive } from '../filter/filter.js';
 import type {
   AliasOfSchema,
   CriteriaSchema,
@@ -11,6 +10,7 @@ import type {
   SpecificMatchingJoinConfig,
   StoredJoinDetails,
 } from './criteria-common.types.js';
+import type { FilterPrimitive } from '../filter/filter.types.base.js';
 
 export interface IFilterManager<CSchema extends CriteriaSchema> {
   where(filterPrimitive: FilterPrimitive<FieldOfSchema<CSchema>>): void;

@@ -5,11 +5,12 @@ import type {
   JoinRelationType,
   SchemaJoins,
 } from './schema.types.js';
-import type { CriteriaType } from './criteria.types.js';
+import { type CriteriaType, FilterOperator } from './criteria.types.js';
 import { type Order, OrderDirection } from '../order/order.js';
-import type { FilterPrimitive } from '../filter/filter.js';
 import type { FilterGroup } from '../filter/filter-group.js';
 import type { PivotJoin, SimpleJoin } from './join.types.js';
+import type { FilterPrimitive } from '../filter/filter.types.base.js';
+import type { Cursor } from '../cursor.js';
 
 export interface StoredJoinDetails<ParentSchema extends CriteriaSchema> {
   type: Exclude<
@@ -34,6 +35,21 @@ export interface ICriteriaBase<
   CurrentAlias extends AliasOfSchema<CSchema> = AliasOfSchema<CSchema>,
   TCriteriaType extends CriteriaType = CriteriaType,
 > {
+  selectAll(): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
+
+  setCursor(
+    filterPrimitive: [
+      Omit<FilterPrimitive<FieldOfSchema<CSchema>>, 'operator'>,
+      Omit<FilterPrimitive<FieldOfSchema<CSchema>>, 'operator'>,
+    ],
+    operator: FilterOperator.GREATER_THAN | FilterOperator.LESS_THAN,
+    order: OrderDirection,
+  ): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
+  get cursor(): Cursor<FieldOfSchema<CSchema>> | undefined;
+  setSelect(
+    selectFields: Array<FieldOfSchema<CSchema>>,
+  ): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
+  get select(): Array<FieldOfSchema<CSchema>>;
   orderBy(
     field: FieldOfSchema<CSchema>,
     direction: OrderDirection,
@@ -73,6 +89,10 @@ export interface ICriteriaBase<
     >,
     joinParameter: JoinParameterType<CSchema, JoinSchema, TMatchingJoinConfig>,
   ): ICriteriaBase<CSchema, CurrentAlias, TCriteriaType>;
+  accept<Context, Result>(
+    visitor: ICriteriaVisitor<Context, Result>,
+    context: Context,
+  ): Result | Promise<Result>;
 }
 
 export type JoinCriteriaParameterType<
@@ -116,3 +136,37 @@ export type SpecificMatchingJoinConfig<
   ParentSchema['joins'][number],
   { alias: JoinedSchemaSpecificAlias }
 >;
+
+export interface ICriteriaVisitor<Context, Result> {
+  visitRoot(
+    criteria: ICriteriaBase<CriteriaSchema, string, typeof CriteriaType.ROOT>,
+    context: Context,
+  ): Result | Promise<Result>;
+
+  visitInnerJoin(
+    criteria: ICriteriaBase<
+      CriteriaSchema,
+      string,
+      typeof CriteriaType.JOIN.INNER_JOIN
+    >,
+    context: Context,
+  ): Result | Promise<Result>;
+
+  visitLeftJoin(
+    criteria: ICriteriaBase<
+      CriteriaSchema,
+      string,
+      typeof CriteriaType.JOIN.LEFT_JOIN
+    >,
+    context: Context,
+  ): Result | Promise<Result>;
+
+  visitFullOuterJoin(
+    criteria: ICriteriaBase<
+      CriteriaSchema,
+      string,
+      typeof CriteriaType.JOIN.FULL_OUTER
+    >,
+    context: Context,
+  ): Result | Promise<Result>;
+}

@@ -1,5 +1,4 @@
 import { GetTypedCriteriaSchema } from '../../types/schema.types.js';
-
 export const PostSchema = GetTypedCriteriaSchema({
   source_name: 'post',
   alias: ['posts'],
@@ -63,35 +62,37 @@ export const DirectionSchema = GetTypedCriteriaSchema({
     },
   ],
 });
-/*
-Criteria.Create(PostSchema, 'posts')
-  .where({
-    field: 'uuid',
-    operator: FilterOperator.EQUALS,
-    value: 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',
-  })
-  .join(
-    Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
-      Criteria.CreateInnerJoin(UserSchema, 'users'),
-      {
-        parent_field: 'user_uuid',
-        join_field: 'uuid',
-      },
-    ),
-    {
-      parent_field: 'uuid',
-      join_field: 'post_uuid',
-    },
-  );
 
-Criteria.Create(UserSchema, 'users')
-  .where({
-    field: 'email',
-    operator: FilterOperator.EQUALS,
-    value: 'contact@nelsoncabrera.dev',
-  })
-  .join(Criteria.CreateInnerJoin(PermissionSchema, 'permissions'), {
-    join_source_name: 'permission_user',
-    join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
-    parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
-  });*/
+// Criteria.Create(PostSchema, 'posts')
+//   .where({
+//     field: 'title',
+//     operator: FilterOperator.LIKE,
+//     value: 'New NPM Package Released',
+//   })
+//   .join(
+//     Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
+//       Criteria.CreateInnerJoin(UserSchema, 'user'),
+//       {
+//         parent_to_join_relation_type: 'many_to_one',
+//         parent_field: 'uuid',
+//         join_field: 'uuid',
+//       },
+//     ),
+//     {
+//       parent_to_join_relation_type: 'one_to_many',
+//       parent_field: 'uuid',
+//       join_field: 'uuid',
+//     },
+//   )
+//   .orderBy('uuid', 'ASC')
+//   .setSkip(10)
+//   .setTake(3)
+//   .setSelect(['uuid', 'body', 'user_uuid'])
+//   .setCursor(
+//     [
+//       { value: '', field: 'uuid' },
+//       { value: '', field: 'uuid' },
+//     ],
+//     FilterOperator.LESS_THAN,
+//     'ASC',
+//   );

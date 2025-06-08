@@ -1,18 +1,24 @@
 import { LogicalOperator } from '../types/operators.types.js';
-import { Filter, type FilterPrimitive } from './filter.js';
+import { Filter } from './filter.js';
+import type {
+  FilterGroupPrimitive,
+  FilterPrimitive,
+  IFilterExpression,
+  IFilterVisitor,
+} from './filter.types.base.js';
+import { FilterNormalizer } from './filter-utils.js';
 
-export type FilterGroupPrimitive<T extends string = string> = {
-  readonly logicalOperator: LogicalOperator;
-  readonly items: ReadonlyArray<FilterPrimitive<T> | FilterGroupPrimitive<T>>;
-};
+export class FilterGroup<T extends string = string>
+  implements IFilterExpression
+{
+  private readonly _logicalOperator: LogicalOperator;
+  private readonly _items: ReadonlyArray<Filter<T> | FilterGroup<T>>;
 
-export class FilterGroup {
-  readonly _logicalOperator: LogicalOperator;
-  readonly _items: ReadonlyArray<Filter | FilterGroup>;
-
-  constructor(filterGroupPrimitive: FilterGroupPrimitive) {
-    this._logicalOperator = filterGroupPrimitive.logicalOperator;
-    this._items = filterGroupPrimitive.items.map((item) => {
+  constructor(filterGroupPrimitive: FilterGroupPrimitive<T>) {
+    const normalizedGroup =
+      FilterNormalizer.normalizeGroup(filterGroupPrimitive);
+    this._logicalOperator = normalizedGroup.logicalOperator;
+    this._items = normalizedGroup.items.map((item) => {
       if ('logicalOperator' in item) {
         return new FilterGroup(item);
       }
@@ -20,7 +26,7 @@ export class FilterGroup {
     });
   }
 
-  get items(): ReadonlyArray<Filter | FilterGroup> {
+  get items(): ReadonlyArray<Filter<T> | FilterGroup<T>> {
     return this._items;
   }
 
@@ -28,128 +34,102 @@ export class FilterGroup {
     return this._logicalOperator;
   }
 
-  /**
-   * Creates the initial FilterGroup, typically for a 'where' clause.
-   * The root is an AND group with the single new filter.
-   */
-  public static createInitial(
-    newFilterPrimitive: FilterPrimitive,
-  ): FilterGroup {
+  static createInitial<T extends string = string>(
+    filterPrimitive: FilterPrimitive<T>,
+  ): FilterGroup<T> {
     return new FilterGroup({
       logicalOperator: LogicalOperator.AND,
-      items: [newFilterPrimitive],
+      items: [filterPrimitive],
     });
   }
 
-  toPrimitive(): FilterGroupPrimitive {
+  toPrimitive(): FilterGroupPrimitive<T> {
     return {
       logicalOperator: this._logicalOperator,
       items: this._items.map((item) => item.toPrimitive()),
     };
   }
 
-  /**
-   * Adds a filter with an AND condition to the current group.
-   * Returns a new FilterGroup instance.
-   */
-  public addAnd(newFilterPrimitive: FilterPrimitive): FilterGroup {
-    const currentRootPrimitive = this.toPrimitive();
+  addAnd(filterPrimitive: FilterPrimitive<T>): FilterGroup<T> {
+    if (this._logicalOperator === LogicalOperator.AND) {
+      return new FilterGroup({
+        logicalOperator: LogicalOperator.AND,
+        items: [
+          ...this._items.map((item) => item.toPrimitive()),
+          filterPrimitive,
+        ],
+      });
+    }
+
+    // For OR groups, we need to add to the last AND group or create a new one
+    const currentItems = this._items.map((item) => item.toPrimitive());
+    const lastItem = currentItems[currentItems.length - 1];
 
     if (
-      currentRootPrimitive.items.length === 0 &&
-      currentRootPrimitive.logicalOperator === LogicalOperator.AND
+      !lastItem ||
+      !('logicalOperator' in lastItem) ||
+      lastItem.logicalOperator !== LogicalOperator.AND
     ) {
-      return new FilterGroup({
+      currentItems.push({
         logicalOperator: LogicalOperator.AND,
-        items: [newFilterPrimitive],
-      });
-    }
-
-    if (currentRootPrimitive.logicalOperator === LogicalOperator.AND) {
-      return new FilterGroup({
-        logicalOperator: LogicalOperator.AND,
-        items: [...currentRootPrimitive.items, newFilterPrimitive],
+        items: [filterPrimitive],
       });
     } else {
-      const currentItems = [...currentRootPrimitive.items];
-      if (currentItems.length === 0) {
-        return new FilterGroup({
-          logicalOperator: LogicalOperator.OR,
-          items: [
-            {
-              logicalOperator: LogicalOperator.AND,
-              items: [newFilterPrimitive],
-            },
-          ],
-        });
-      }
-
-      const lastItemIndex = currentItems.length - 1;
-      const originalLastItem = currentItems[lastItemIndex]!;
-      let newLastBranch: FilterGroupPrimitive;
-
-      if (
-        'logicalOperator' in originalLastItem &&
-        originalLastItem.logicalOperator === LogicalOperator.AND
-      ) {
-        newLastBranch = {
-          ...originalLastItem,
-          items: [...originalLastItem.items, newFilterPrimitive],
-        };
-      } else if (!('logicalOperator' in originalLastItem)) {
-        newLastBranch = {
-          logicalOperator: LogicalOperator.AND,
-          items: [originalLastItem, newFilterPrimitive],
-        };
-      } else {
-        currentItems.push({
-          logicalOperator: LogicalOperator.AND,
-          items: [newFilterPrimitive],
-        });
-        return new FilterGroup({
-          logicalOperator: LogicalOperator.OR,
-          items: currentItems,
-        });
-      }
-      currentItems[lastItemIndex] = newLastBranch;
-      return new FilterGroup({
-        logicalOperator: LogicalOperator.OR,
-        items: currentItems,
-      });
+      currentItems[currentItems.length - 1] = {
+        logicalOperator: LogicalOperator.AND,
+        items: [...lastItem.items, filterPrimitive],
+      };
     }
+
+    return new FilterGroup({
+      logicalOperator: LogicalOperator.OR,
+      items: currentItems,
+    });
   }
 
-  /**
-   * Adds a filter with an OR condition to the current group.
-   * Returns a new FilterGroup instance.
-   */
-  public addOr(newFilterPrimitive: FilterPrimitive): FilterGroup {
-    const currentRootPrimitive = this.toPrimitive();
-    const newBranchForOr: FilterGroupPrimitive = {
-      logicalOperator: LogicalOperator.AND,
-      items: [newFilterPrimitive],
-    };
+  addOr(filterPrimitive: FilterPrimitive<T>): FilterGroup<T> {
+    const currentItems = this._items.map((item) => item.toPrimitive());
 
-    if (
-      currentRootPrimitive.items.length === 0 &&
-      currentRootPrimitive.logicalOperator === LogicalOperator.AND
-    ) {
+    // Convert current structure to OR if needed
+    if (this._logicalOperator === LogicalOperator.AND) {
       return new FilterGroup({
         logicalOperator: LogicalOperator.OR,
-        items: [newBranchForOr],
+        items: [
+          ...(currentItems.length > 0
+            ? [
+                {
+                  logicalOperator: LogicalOperator.AND,
+                  items: currentItems,
+                },
+              ]
+            : []),
+          {
+            logicalOperator: LogicalOperator.AND,
+            items: [filterPrimitive],
+          },
+        ],
       });
     }
 
-    if (currentRootPrimitive.logicalOperator === LogicalOperator.OR) {
-      return new FilterGroup({
-        logicalOperator: LogicalOperator.OR,
-        items: [...currentRootPrimitive.items, newBranchForOr],
-      });
-    } else {
-      return new FilterGroup({
-        logicalOperator: LogicalOperator.OR,
-        items: [currentRootPrimitive, newBranchForOr],
-      });
-    }
+    // Add new AND branch to existing OR
+    return new FilterGroup({
+      logicalOperator: LogicalOperator.OR,
+      items: [
+        ...currentItems,
+        {
+          logicalOperator: LogicalOperator.AND,
+          items: [filterPrimitive],
+        },
+      ],
+    });
+  }
+
+  accept<Source, Output = Source>(
+    visitor: IFilterVisitor<Source, Output>,
+    context: Source,
+  ): Output | Promise<Output> {
+    return this.logicalOperator === LogicalOperator.AND
+      ? visitor.visitAndGroup(this, context)
+      : visitor.visitOrGroup(this, context);
   }
 }

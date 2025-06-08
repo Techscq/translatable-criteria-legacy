@@ -1,47 +1,38 @@
-import { FilterOperator } from '../types/operators.types.js';
+import type { FilterOperator } from '../types/operators.types.js';
+import type {
+  FilterPrimitive,
+  FilterValue,
+  IFilterExpression,
+  IFilterVisitor,
+} from './filter.types.base.js';
 
-export type FilterValue =
-  | string
-  | number
-  | boolean
-  | Array<string | number | boolean>
-  | null
-  | undefined;
+export class Filter<T extends string = string> implements IFilterExpression {
+  constructor(private readonly primitive: FilterPrimitive<T>) {}
 
-export type FilterPrimitive<T extends string = string> = {
-  field: T;
-  operator: FilterOperator;
-  value: FilterValue;
-};
-
-export class Filter {
-  protected readonly _field: string;
-  protected readonly _operator: FilterOperator;
-  protected readonly _value: FilterValue;
-
-  constructor(primitive: FilterPrimitive) {
-    this._field = primitive.field;
-    this._operator = primitive.operator;
-    this._value = primitive.value;
-  }
-
-  get field(): string {
-    return this._field;
+  get field(): T {
+    return this.primitive.field;
   }
 
   get operator(): FilterOperator {
-    return this._operator;
+    return this.primitive.operator;
   }
 
   get value(): FilterValue {
-    return this._value;
+    return this.primitive.value;
   }
 
-  toPrimitive(): FilterPrimitive {
+  accept<Source, Output = Source>(
+    visitor: IFilterVisitor<Source, Output>,
+    context: Source,
+  ): Output | Promise<Output> {
+    return visitor.visitFilter(this, context);
+  }
+
+  toPrimitive(): FilterPrimitive<T> {
     return {
-      field: this._field,
-      operator: this._operator,
-      value: this._value,
+      field: this.field,
+      operator: this.operator,
+      value: this.value,
     };
   }
 }

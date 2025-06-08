@@ -12,24 +12,25 @@ A TypeScript library for building data-source agnostic, translatable query crite
 
 ## Overview
 
-This library simplifies the construction of complex data queries by providing a consistent and abstract way to define filtering, ordering, and relationship (joins) configurations. The core concept revolves around the `Criteria` object, which allows developers to define sophisticated query specifications in a data source-agnostic manner. These `Criteria` objects can then be processed by a `CriteriaTranslator` to generate queries for various data sources.
+This library simplifies the construction of complex data queries by providing a consistent and abstract way to define filtering, ordering, field selection, pagination (offset and cursor-based), and relationship (joins) configurations. The core concept revolves around the `Criteria` object, which allows developers to define sophisticated query specifications in a data source-agnostic manner. These `Criteria` objects can then be processed by a `CriteriaTranslator` (using the Visitor pattern) to generate queries for various data sources.
 
 ## Key Features
 
 - **Type-Safe Criteria Building:** Construct queries with a fluent, strongly-typed interface.
-- **Powerful Filtering:** Define intricate filtering logic with multiple operators and grouping.
+- **Powerful Filtering:** Define intricate filtering logic with multiple operators and grouping. Filter groups are automatically normalized for consistency.
 - **Flexible Join System:** Support for various join types (inner, left, full outer) and pivot table configurations.
+- **Field Selection:** Specify exactly which fields to retrieve using `setSelect()` or `selectAll()`.
+- **Pagination:** Supports both offset-based (`setTake()`, `setSkip()`) and cursor-based (`setCursor()`) pagination.
+- **Visitor Pattern for Translation:** `Criteria` objects implement an `accept` method, allowing for clean and extensible translation logic via the Visitor pattern.
 - **Data Source Agnostic:** Design criteria independently of the underlying data source.
 - **Translator-Based Architecture:** Implement custom `CriteriaTranslator` instances to convert criteria into specific query languages (e.g., SQL, NoSQL queries, ORM-specific queries).
 - **Full TypeScript Support:** Benefit from compile-time validation and autocompletion.
 
 ## Core Concepts
 
-### CriteriaTranslator (Interface)
+### CriteriaTranslator (Abstract Class)
 
-The library provides a `CriteriaTranslator` interface. You (or the community) will implement this interface to convert `Criteria` objects into queries for specific data sources (e.g., SQL, TypeORM QueryBuilder, MongoDB queries).
-
-## Usage Example
+The library provides an abstract `CriteriaTranslator` class that implements the `ICriteriaVisitor` interface. You (or the community) will extend this class to convert `Criteria` objects into queries for specific data sources (e.g., SQL, TypeORM QueryBuilder, MongoDB queries).
 
 ### Schemas
 
@@ -182,28 +183,29 @@ const userCriteriaWithPermissions = Criteria.Create(UserSchema, 'users')
 
 ## Type Safety Features
 
-- Compile-time validation of field names within criteria based on schemas
+- Compile-time validation of field names within criteria based on schemas.
 - Type-checked join configurations ensuring compatibility between schemas.
 - Autocomplete support for schema fields and defined join aliases.
 - Validation of join parameters based on schema definitions (simple vs. pivot joins).
+- Validation for selected fields, cursor fields, take/skip values.
 
 ## Roadmap
 
+- [x] Implement cursor pagination ability.
+- [x] Implement field selection (`select`).
 - [ ] Provide example translator implementations (e.g., for a common ORM or SQL dialect).
-- [ ] Implement cursor pagination ability
 - [ ] Enhance documentation with more detailed examples for translator development.
-- [ ] Add more complex filtering capabilities (e.g., nested logical groups directly in where clauses).
 - [ ] Explore utility functions to simplify translator development.
 - [ ] Add more comprehensive test coverage for criteria construction and edge cases.
 
 ## Contributing
 
-This project is in early development. Contributions are welcome! Please feel free to submit a Pull Request on our [GitHub repository](https://github.com/Techscq/translatable-criteria).
+This project is in early development. Contributions are welcome! Please feel free to submit a Pull Request on our GitHub repository.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the LICENSE file for details.
 
 ## Author
 
-Nelson Cabrera ([@Techscq](https://github.com/Techscq))
+Nelson Cabrera (@Techscq)
