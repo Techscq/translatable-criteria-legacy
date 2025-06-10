@@ -29,5 +29,5 @@ export function GetTypedCriteriaSchema<const TInput extends CriteriaSchema>(
 export type FieldOfSchema<T extends CriteriaSchema> =
   T['fields'] extends ReadonlyArray<string> ? T['fields'][number] : never;
 
-export type AliasOfSchema<T extends CriteriaSchema> =
+export type SelectedAliasOf<T extends CriteriaSchema> =
   T['alias'] extends ReadonlyArray<string> ? T['alias'][number] : never;

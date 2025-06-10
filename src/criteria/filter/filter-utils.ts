@@ -1,8 +1,8 @@
 import type {
   FilterGroupPrimitive,
   FilterPrimitive,
-} from './filter.types.base.js';
-import { LogicalOperator } from '../types/operators.types.js';
+} from './types/filter-primitive.types.js';
+import { LogicalOperator } from '../types/operator.types.js';
 
 export class FilterNormalizer {
   static normalizeGroup<T extends string = string>(
@@ -59,7 +59,6 @@ export class FilterNormalizer {
           items: [],
         };
       } else if (normalized.length === 1 && normalized[0] !== undefined) {
-        // Aseguramos que el elemento existe
         const singleItem = normalized[0];
         if ('logicalOperator' in singleItem) {
           result = singleItem as FilterGroupPrimitive<T>;

@@ -1,8 +1,8 @@
 import type { CriteriaSchema, FieldOfSchema } from './types/schema.types.js';
 import { FilterGroup } from './filter/filter-group.js';
-import type { IFilterManager } from './types/criteria-manager.types.js';
-import { LogicalOperator } from './types/operators.types.js';
-import type { FilterPrimitive } from './filter/filter.types.base.js';
+import type { IFilterManager } from './types/manager.interface.js';
+import { LogicalOperator } from './types/operator.types.js';
+import type { FilterPrimitive } from './filter/types/filter-primitive.types.js';
 
 export class CriteriaFilterManager<CSchema extends CriteriaSchema>
   implements IFilterManager<CSchema>

@@ -1,10 +1,10 @@
-import type { FilterOperator } from '../types/operators.types.js';
+import type { FilterOperator } from '../types/operator.types.js';
+import type { IFilterExpression } from '../types/filter-expression.interface.js';
 import type {
   FilterPrimitive,
   FilterValue,
-  IFilterExpression,
-  IFilterVisitor,
-} from './filter.types.base.js';
+} from './types/filter-primitive.types.js';
+import type { ICriteriaVisitor } from '../types/visitor-interface.types.js';
 
 export class Filter<T extends string = string> implements IFilterExpression {
   constructor(private readonly primitive: FilterPrimitive<T>) {}
@@ -22,7 +22,7 @@ export class Filter<T extends string = string> implements IFilterExpression {
   }
 
   accept<Source, Output = Source>(
-    visitor: IFilterVisitor<Source, Output>,
+    visitor: ICriteriaVisitor<Source, Output>,
     context: Source,
   ): Output | Promise<Output> {
     return visitor.visitFilter(this, context);

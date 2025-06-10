@@ -1,12 +1,12 @@
-import { LogicalOperator } from '../types/operators.types.js';
+import { LogicalOperator } from '../types/operator.types.js';
 import { Filter } from './filter.js';
+import { FilterNormalizer } from './filter-utils.js';
+import type { IFilterExpression } from '../types/filter-expression.interface.js';
 import type {
   FilterGroupPrimitive,
   FilterPrimitive,
-  IFilterExpression,
-  IFilterVisitor,
-} from './filter.types.base.js';
-import { FilterNormalizer } from './filter-utils.js';
+} from './types/filter-primitive.types.js';
+import type { ICriteriaVisitor } from '../types/visitor-interface.types.js';
 
 export class FilterGroup<T extends string = string>
   implements IFilterExpression
@@ -61,7 +61,6 @@ export class FilterGroup<T extends string = string>
       });
     }
 
-    // For OR groups, we need to add to the last AND group or create a new one
     const currentItems = this._items.map((item) => item.toPrimitive());
     const lastItem = currentItems[currentItems.length - 1];
 
@@ -90,7 +89,6 @@ export class FilterGroup<T extends string = string>
   addOr(filterPrimitive: FilterPrimitive<T>): FilterGroup<T> {
     const currentItems = this._items.map((item) => item.toPrimitive());
 
-    // Convert current structure to OR if needed
     if (this._logicalOperator === LogicalOperator.AND) {
       return new FilterGroup({
         logicalOperator: LogicalOperator.OR,
@@ -111,7 +109,6 @@ export class FilterGroup<T extends string = string>
       });
     }
 
-    // Add new AND branch to existing OR
     return new FilterGroup({
       logicalOperator: LogicalOperator.OR,
       items: [
@@ -125,7 +122,7 @@ export class FilterGroup<T extends string = string>
   }
 
   accept<Source, Output = Source>(
-    visitor: IFilterVisitor<Source, Output>,
+    visitor: ICriteriaVisitor<Source, Output>,
     context: Source,
   ): Output | Promise<Output> {
     return this.logicalOperator === LogicalOperator.AND

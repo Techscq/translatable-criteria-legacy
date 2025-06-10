@@ -1,12 +1,9 @@
 import { FilterGroup } from '../filter-group.js';
-import {
-  FilterOperator,
-  LogicalOperator,
-} from '../../types/operators.types.js';
+import { FilterOperator, LogicalOperator } from '../../types/operator.types.js';
 import type {
   FilterGroupPrimitive,
   FilterPrimitive,
-} from '../filter.types.base.js';
+} from '../types/filter-primitive.types.js';
 
 describe('FilterGroup', () => {
   // Helper function to create test filter primitives

@@ -1,7 +1,7 @@
 import { Filter } from './filter/filter.js';
 import { OrderDirection } from './order/order.js';
-import type { FilterPrimitive } from './filter/filter.types.base.js';
-import { FilterOperator } from './types/operators.types.js';
+import type { FilterPrimitive } from './filter/types/filter-primitive.types.js';
+import { FilterOperator } from './types/operator.types.js';
 
 export class Cursor<TFields extends string> {
   filters: [Filter<TFields>, Filter<TFields>];

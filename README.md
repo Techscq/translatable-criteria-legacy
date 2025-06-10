@@ -12,7 +12,7 @@ A TypeScript library for building data-source agnostic, translatable query crite
 
 ## Overview
 
-This library simplifies the construction of complex data queries by providing a consistent and abstract way to define filtering, ordering, field selection, pagination (offset and cursor-based), and relationship (joins) configurations. The core concept revolves around the `Criteria` object, which allows developers to define sophisticated query specifications in a data source-agnostic manner. These `Criteria` objects can then be processed by a `CriteriaTranslator` (using the Visitor pattern) to generate queries for various data sources.
+This library simplifies the construction of complex data queries by providing a consistent and abstract way to define filtering, ordering, field selection, pagination (offset and cursor-based), and relationship (joins) configurations. The core concept revolves around the `Criteria` object hierarchy, which allows developers to define sophisticated query specifications in a data source-agnostic manner. These `Criteria` objects can then be processed by a `CriteriaTranslator` (using the Visitor pattern) to generate queries for various data sources.
 
 ## Key Features
 
@@ -21,7 +21,7 @@ This library simplifies the construction of complex data queries by providing a 
 - **Flexible Join System:** Support for various join types (inner, left, full outer) and pivot table configurations.
 - **Field Selection:** Specify exactly which fields to retrieve using `setSelect()` or `selectAll()`.
 - **Pagination:** Supports both offset-based (`setTake()`, `setSkip()`) and cursor-based (`setCursor()`) pagination.
-- **Visitor Pattern for Translation:** `Criteria` objects implement an `accept` method, allowing for clean and extensible translation logic via the Visitor pattern.
+- **Visitor Pattern for Translation:** Criteria objects implement an `accept` method, allowing for clean and extensible translation logic via the Visitor pattern.
 - **Data Source Agnostic:** Design criteria independently of the underlying data source.
 - **Translator-Based Architecture:** Implement custom `CriteriaTranslator` instances to convert criteria into specific query languages (e.g., SQL, NoSQL queries, ORM-specific queries).
 - **Full TypeScript Support:** Benefit from compile-time validation and autocompletion.
@@ -30,7 +30,11 @@ This library simplifies the construction of complex data queries by providing a 
 
 ### CriteriaTranslator (Abstract Class)
 
-The library provides an abstract `CriteriaTranslator` class that implements the `ICriteriaVisitor` interface. You (or the community) will extend this class to convert `Criteria` objects into queries for specific data sources (e.g., SQL, TypeORM QueryBuilder, MongoDB queries).
+The library provides an abstract `CriteriaTranslator` class that implements the `ICriteriaVisitor` interface. You (or the community) will extend this class to convert Criteria objects into queries for specific data sources (e.g., SQL, TypeORM QueryBuilder, MongoDB queries).
+
+### Criteria Hierarchy & Factory
+
+The core logic is built around an abstract `Criteria` class, with concrete implementations like `RootCriteria`, `InnerJoinCriteria`, `LeftJoinCriteria`, and `OuterJoinCriteria`. Criteria instances are created using the `CriteriaFactory`.
 
 ### Schemas
 
@@ -114,15 +118,14 @@ Build type-safe query specifications using the `Criteria` class.
 ### Basic Example
 
 ```typescript
-import { Criteria, FilterOperator } from 'repository-criteria-interface';
-const criteria = Criteria.Create(UserSchema, 'users')
+import { CriteriaFactory, FilterOperator } from 'repository-criteria-interface';
+const criteria = CriteriaFactory.GetCriteria(UserSchema, 'users')
   .where({
     field: 'email',
     operator: FilterOperator.EQUALS,
     value: 'contact@nelsoncabrera.dev',
   })
-  .join(Criteria.CreateInnerJoin(PermissionSchema, 'permissions'), {
-    parent_to_join_relation_type: 'many_to_many',
+  .join(CriteriaFactory.GetInnerJoinCriteria(PermissionSchema, 'permissions'), {
     join_source_name: 'permission_user',
     join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
     parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
@@ -132,23 +135,21 @@ const criteria = Criteria.Create(UserSchema, 'users')
 ### Advanced Joins Example with order and offset pagination
 
 ```typescript
-const criteriaWithJoins = Criteria.Create(PostSchema, 'posts')
+const criteriaWithJoins = CriteriaFactory.GetCriteria(PostSchema, 'posts')
   .where({
     field: 'title',
     operator: FilterOperator.LIKE,
     value: 'New NPM Package Released',
   })
   .join(
-    Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
-      Criteria.CreateInnerJoin(UserSchema, 'user'),
+    CriteriaFactory.GetInnerJoinCriteria(CommentSchema, 'comments').join(
+      CriteriaFactory.GetInnerJoinCriteria(UserSchema, 'user'),
       {
-        parent_to_join_relation_type: 'many_to_one',
         parent_field: 'uuid',
         join_field: 'uuid',
       },
     ),
     {
-      parent_to_join_relation_type: 'one_to_many',
       parent_field: 'uuid',
       join_field: 'uuid',
     },
@@ -161,14 +162,16 @@ const criteriaWithJoins = Criteria.Create(PostSchema, 'posts')
 ### Many-to-Many Relationship Example
 
 ```typescript
-const userCriteriaWithPermissions = Criteria.Create(UserSchema, 'users')
+const userCriteriaWithPermissions = CriteriaFactory.GetCriteria(
+  UserSchema,
+  'users',
+)
   .where({
     field: 'email',
     operator: FilterOperator.EQUALS,
     value: 'contact@nelsoncabrera.dev',
   })
-  .join(Criteria.CreateLeftJoin(PermissionSchema, 'permissions'), {
-    parent_to_join_relation_type: 'many_to_many',
+  .join(CriteriaFactory.GetLeftJoinCriteria(PermissionSchema, 'permissions'), {
     join_source_name: 'permission_user', // pivot table name
     join_field: {
       pivot_field: 'permission_uuid',

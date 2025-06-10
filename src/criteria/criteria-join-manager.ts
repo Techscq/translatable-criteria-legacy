@@ -1,67 +1,31 @@
-import type { AliasOfSchema, CriteriaSchema } from './types/schema.types.js';
-import type { IJoinManager } from './types/criteria-manager.types.js';
+import type { CriteriaSchema, JoinRelationType } from './types/schema.types.js';
+import type { IJoinManager } from './types/manager.interface.js';
+import type { PivotJoin, SimpleJoin } from './types/join-parameter.types.js';
 import type {
-  ICriteriaBase,
-  JoinCriteriaParameterType,
-  JoinParameterType,
-  SpecificMatchingJoinConfig,
+  AnyJoinCriteria,
   StoredJoinDetails,
-} from './types/criteria-common.types.js';
-import { CriteriaType } from './types/criteria.types.js';
-
-function isICriteria<
-  JoinSchema extends CriteriaSchema,
-  JoinedCriteriaAlias extends AliasOfSchema<JoinSchema>,
->(
-  value: unknown,
-): value is ICriteriaBase<
-  JoinSchema,
-  JoinedCriteriaAlias,
-  Exclude<
-    (typeof CriteriaType.JOIN)[keyof typeof CriteriaType.JOIN],
-    typeof CriteriaType.ROOT
-  >
-> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'type' in value &&
-    'alias' in value
-  );
-}
+} from './types/join-utility.types.js';
 
 export class CriteriaJoinManager<CSchema extends CriteriaSchema>
   implements IJoinManager<CSchema>
 {
   private _joins: Map<string, StoredJoinDetails<CSchema>> = new Map();
 
-  addJoin<
-    JoinSchema extends CriteriaSchema,
-    JoinedCriteriaAlias extends AliasOfSchema<JoinSchema>,
-    TMatchingJoinConfig extends SpecificMatchingJoinConfig<
-      CSchema,
-      JoinedCriteriaAlias
-    >,
-  >(
-    criteriaToJoin: JoinCriteriaParameterType<
-      CSchema,
-      JoinSchema,
-      JoinedCriteriaAlias,
-      TMatchingJoinConfig
-    >,
-    joinParameter: JoinParameterType<CSchema, JoinSchema, TMatchingJoinConfig>,
+  addJoin<JoinSchema extends CriteriaSchema>(
+    criteriaToJoin: AnyJoinCriteria<JoinSchema>,
+    joinParameter:
+      | PivotJoin<CSchema, JoinSchema, JoinRelationType>
+      | SimpleJoin<CSchema, JoinSchema, JoinRelationType>,
   ): void {
-    if (isICriteria<JoinSchema, JoinedCriteriaAlias>(criteriaToJoin)) {
-      const joinDetails: StoredJoinDetails<CSchema> = {
-        type: criteriaToJoin.type,
-        parameters: joinParameter,
-        criteria: criteriaToJoin,
-      };
-      this._joins.set(criteriaToJoin.alias, joinDetails);
-    }
+    const joinDetails: StoredJoinDetails<CSchema> = {
+      parameters: joinParameter,
+      criteria: criteriaToJoin,
+    };
+
+    this._joins.set(criteriaToJoin.alias, joinDetails);
   }
 
-  getJoins(): Array<[string, StoredJoinDetails<CSchema>]> {
-    return Array.from(this._joins.entries());
+  getJoins(): Array<StoredJoinDetails<CSchema>> {
+    return Array.from(this._joins.values());
   }
 }

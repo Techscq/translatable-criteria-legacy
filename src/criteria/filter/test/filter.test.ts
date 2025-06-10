@@ -1,5 +1,6 @@
-import { FilterOperator } from '../../types/criteria.types.js';
-import { Filter, type FilterPrimitive } from '../filter.js';
+import { Filter } from '../filter.js';
+import type { FilterPrimitive } from '../types/filter-primitive.types.js';
+import { FilterOperator } from '../../types/operator.types.js';
 
 describe('Filter', () => {
   const primitive: FilterPrimitive = {
