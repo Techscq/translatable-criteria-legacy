@@ -9,6 +9,7 @@ import type { PivotJoin, SimpleJoin } from './join-parameter.types.js';
 import type { InnerJoinCriteria } from '../inner.join-criteria.js';
 import type { LeftJoinCriteria } from '../left.join-criteria.js';
 import type { OuterJoinCriteria } from '../outer.join-criteria.js';
+import type { PivotJoinInput, SimpleJoinInput } from './join-input.types.js';
 export type AnyJoinCriteria<
   CSchema extends CriteriaSchema,
   Alias extends SelectedAliasOf<CSchema> = SelectedAliasOf<CSchema>,
@@ -40,22 +41,8 @@ export type JoinParameterType<
 > = [MatchingConfigForActualAlias] extends [never]
   ? never
   : MatchingConfigForActualAlias['join_relation_type'] extends 'many_to_many'
-    ? Omit<
-        PivotJoin<
-          ParentSchema,
-          JoinedSchema,
-          MatchingConfigForActualAlias['join_relation_type']
-        >,
-        'parent_alias' | 'parent_source_name' | 'parent_to_join_relation_type'
-      >
-    : Omit<
-        SimpleJoin<
-          ParentSchema,
-          JoinedSchema,
-          MatchingConfigForActualAlias['join_relation_type']
-        >,
-        'parent_alias' | 'parent_source_name' | 'parent_to_join_relation_type'
-      >;
+    ? PivotJoinInput<ParentSchema, JoinedSchema>
+    : SimpleJoinInput<ParentSchema, JoinedSchema>;
 
 export type SpecificMatchingJoinConfig<
   ParentSchema extends CriteriaSchema,

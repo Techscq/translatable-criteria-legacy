@@ -12,6 +12,10 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
 
     "module": "NodeNext",
     "outDir": "dist",
@@ -35,7 +39,6 @@
     "vitest.config.js.map",
     "**/*.test.ts",
     "**/test",
-    "**/infrastructure",
     "**/repository"
   ]
 }

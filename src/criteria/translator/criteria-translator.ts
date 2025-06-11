@@ -14,29 +14,31 @@ import type { ICriteriaVisitor } from '../types/visitor-interface.types.js';
 
 /**
  * Abstract Class for translating criteria into various query formats
- * @template Source - The target format (e.g., QueryBuilder, raw SQL string, etc.)
- * @template OutPut - The output format by default its Source (Only specify this if
+ * @template TranslationContext - The target format (e.g., QueryBuilder, raw SQL string, etc.)
+ * @template TranslationOutput - The output format by default its Source (Only specify this if
  * you really need something like a memory translator and the output would be different
- * from the Source itself)
+ * from the TranslationContext itself)
  * @template RootSchema - The schema type for the root criteria
  * @example
  * // TypeORM QueryBuilder translator
  * class TypeORMTranslator implements CriteriaTranslator<SelectQueryBuilder<Entity>> {
- *   translate(criteria, queryBuilder) { return queryBuilder; }
+ *  ...Concrete implementation
  * }
  *
- * // Raw SQL translator
- * class SQLTranslator implements CriteriaTranslator<string> {
- *   translate(criteria, sql) { return sql; }
+ * // Raw MySQL translator
+ * export class MysqlTranslator extends CriteriaTranslator<string, string> { {
+ *  ...Concrete implementation
  * }
  */
-export abstract class CriteriaTranslator<Source, Output = Source>
-  implements ICriteriaVisitor<Source, Output>
+export abstract class CriteriaTranslator<
+  TranslationContext,
+  TranslationOutput = TranslationContext,
+> implements ICriteriaVisitor<TranslationContext, TranslationOutput>
 {
   /**
    * Translates a criteria into the target source format
    * @param criteria - The criteria to translate
-   * @param source - The source object to translate into (e.g., QueryBuilder instance)
+   * @param source - The source object to translate into (e.g., QueryBuilder instance, or raw SQL string)
    * @returns The modified source or the output format if specified
    */
   translate<RootCriteriaSchema extends CriteriaSchema>(
@@ -44,8 +46,8 @@ export abstract class CriteriaTranslator<Source, Output = Source>
       RootCriteriaSchema,
       SelectedAliasOf<RootCriteriaSchema>
     >,
-    source: Source,
-  ): Output | Promise<Output> {
+    source: TranslationContext,
+  ): TranslationOutput {
     return criteria.accept(this, source);
   }
 
@@ -54,8 +56,8 @@ export abstract class CriteriaTranslator<Source, Output = Source>
     RootAlias extends SelectedAliasOf<RootCriteriaSchema>,
   >(
     criteria: RootCriteria<RootCriteriaSchema, RootAlias>,
-    context: Source,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   abstract visitInnerJoin<
     ParentCSchema extends CriteriaSchema,
@@ -66,8 +68,8 @@ export abstract class CriteriaTranslator<Source, Output = Source>
     parameters:
       | PivotJoin<ParentCSchema, JoinCriteriaSchema, JoinRelationType>
       | SimpleJoin<ParentCSchema, JoinCriteriaSchema, JoinRelationType>,
-    context: Source,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   abstract visitLeftJoin<
     ParentCSchema extends CriteriaSchema,
@@ -78,8 +80,8 @@ export abstract class CriteriaTranslator<Source, Output = Source>
     parameters:
       | PivotJoin<ParentCSchema, JoinCriteriaSchema, JoinRelationType>
       | SimpleJoin<ParentCSchema, JoinCriteriaSchema, JoinRelationType>,
-    context: Source,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   abstract visitOuterJoin<
     ParentCSchema extends CriteriaSchema,
@@ -90,21 +92,24 @@ export abstract class CriteriaTranslator<Source, Output = Source>
     parameters:
       | PivotJoin<ParentCSchema, JoinCriteriaSchema, JoinRelationType>
       | SimpleJoin<ParentCSchema, JoinCriteriaSchema, JoinRelationType>,
-    context: Source,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   abstract visitFilter<FieldType extends string>(
     filter: Filter<FieldType>,
-    context: Source,
-  ): Output | Promise<Output>;
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 
   abstract visitAndGroup<FieldType extends string>(
     group: FilterGroup<FieldType>,
-    context: Source,
-  ): Output | Promise<Output>;
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 
   abstract visitOrGroup<FieldType extends string>(
     group: FilterGroup<FieldType>,
-    context: Source,
-  ): Output | Promise<Output>;
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 }

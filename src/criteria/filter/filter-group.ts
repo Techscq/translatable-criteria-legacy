@@ -121,12 +121,13 @@ export class FilterGroup<T extends string = string>
     });
   }
 
-  accept<Source, Output = Source>(
-    visitor: ICriteriaVisitor<Source, Output>,
-    context: Source,
-  ): Output | Promise<Output> {
+  accept<TranslationContext, TranslationOutput = TranslationContext>(
+    visitor: ICriteriaVisitor<TranslationContext, TranslationOutput>,
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput {
     return this.logicalOperator === LogicalOperator.AND
-      ? visitor.visitAndGroup(this, context)
-      : visitor.visitOrGroup(this, context);
+      ? visitor.visitAndGroup(this, currentAlias, context)
+      : visitor.visitOrGroup(this, currentAlias, context);
   }
 }

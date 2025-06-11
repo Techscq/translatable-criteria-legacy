@@ -6,8 +6,9 @@ import type { ICriteriaVisitor } from './visitor-interface.types.js';
 
 export interface IFilterExpression {
   toPrimitive(): FilterPrimitive | FilterGroupPrimitive;
-  accept<Source, Output = Source>(
-    visitor: ICriteriaVisitor<Source, Output>,
-    context: Source,
-  ): Output | Promise<Output>;
+  accept<TranslationContext, TranslationOutput = TranslationContext>(
+    visitor: ICriteriaVisitor<TranslationContext, TranslationOutput>,
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 }

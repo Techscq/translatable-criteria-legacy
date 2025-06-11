@@ -21,11 +21,12 @@ export class Filter<T extends string = string> implements IFilterExpression {
     return this.primitive.value;
   }
 
-  accept<Source, Output = Source>(
-    visitor: ICriteriaVisitor<Source, Output>,
-    context: Source,
-  ): Output | Promise<Output> {
-    return visitor.visitFilter(this, context);
+  accept<TranslationContext, TranslationOutput = TranslationContext>(
+    visitor: ICriteriaVisitor<TranslationContext, TranslationOutput>,
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput {
+    return visitor.visitFilter(this, currentAlias, context);
   }
 
   toPrimitive(): FilterPrimitive<T> {

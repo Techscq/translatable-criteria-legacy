@@ -17,4 +17,3 @@ vitest.config.js.map
 vitest.config.d.ts
 vitest.config.d.ts.map
 /src/criteria/repository
-/src/criteria/translator/infrastructure

@@ -38,7 +38,7 @@ export abstract class Criteria<
   }
   get select() {
     if (this._selectAll) {
-      return this.schema.fields as Array<FieldOfSchema<TSchema>>;
+      return [...this.schema.fields] as Array<FieldOfSchema<TSchema>>;
     }
     return Array.from(this._select);
   }
@@ -50,12 +50,13 @@ export abstract class Criteria<
   }
 
   setSelect(selectFields: Array<FieldOfSchema<TSchema>>) {
-    selectFields.forEach((field) => {
-      if (!this.schema.fields.includes(field))
+    for (const field of selectFields) {
+      if (!this.schema.fields.includes(field)) {
         throw new Error(
-          `The field '${field}' is not defined in the schema '${this.schema.source_name}'.`,
+          `The field '${String(field)}' is not defined in the schema '${this.schema.source_name}'.`,
         );
-    });
+      }
+    }
     this._selectAll = false;
     this._select = new Set(selectFields);
     return this;
@@ -71,14 +72,14 @@ export abstract class Criteria<
     return this._skip;
   }
 
-  private _orders: Array<Order<string>> = [];
+  private _orders: Array<Order<FieldOfSchema<TSchema>>> = [];
 
-  get orders() {
-    return this._orders;
+  get orders(): ReadonlyArray<Order<FieldOfSchema<TSchema>>> {
+    return [...this._orders];
   }
 
   get joins() {
-    return this._joinManager.getJoins();
+    return [...this._joinManager.getJoins()];
   }
 
   get rootFilterGroup() {
@@ -144,20 +145,26 @@ export abstract class Criteria<
     >,
     joinParameter: JoinParameterType<TSchema, TJoinSchema, TMatchingJoinConfig>,
   ) {
-    if (
-      typeof criteriaToJoin === 'object' &&
-      typeof joinParameter === 'object'
-    ) {
-      const fullJoinParameters = {
-        ...joinParameter,
-        parent_alias: this.alias,
-        parent_source_name: this.sourceName,
-        parent_to_join_relation_type: this.schema.joins.find(
-          (join) => join.alias === criteriaToJoin.alias,
-        )!.join_relation_type,
-      };
-      this._joinManager.addJoin(criteriaToJoin, fullJoinParameters);
+    if (typeof criteriaToJoin === 'string') {
+      throw new Error(`Invalid criteriaToJoin: ${criteriaToJoin}`);
     }
+    const joinConfig = this.schema.joins.find(
+      (join) => join.alias === criteriaToJoin.alias,
+    );
+    if (!joinConfig) {
+      throw new Error(
+        `Join configuration for alias '${String(criteriaToJoin.alias)}' not found in schema '${this.schema.source_name}'.`,
+      );
+    }
+
+    const fullJoinParameters = {
+      ...joinParameter,
+      parent_alias: this.alias,
+      parent_source_name: this.sourceName,
+      parent_to_join_relation_type: joinConfig.join_relation_type,
+    };
+
+    this._joinManager.addJoin(criteriaToJoin, fullJoinParameters);
     return this;
   }
 
@@ -176,12 +183,13 @@ export abstract class Criteria<
     if (cursorFilters.length !== 2)
       throw new Error(`The cursor must have exactly 2 elements`);
 
-    cursorFilters.forEach((filterPrimitive) => {
-      if (!this.schema.fields.includes(filterPrimitive.field))
+    for (const filterPrimitive of cursorFilters) {
+      if (!this.schema.fields.includes(filterPrimitive.field)) {
         throw new Error(
-          `The field '${filterPrimitive.field}' is not defined in the schema '${this.schema.source_name}'.`,
+          `The field '${String(filterPrimitive.field)}' is not defined in the schema '${this.schema.source_name}'.`,
         );
-    });
+      }
+    }
     this._cursor = new Cursor(cursorFilters, operator, order);
     return this;
   }

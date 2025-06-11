@@ -6,10 +6,10 @@ export class RootCriteria<
   CSchema extends CriteriaSchema,
   Alias extends SelectedAliasOf<CSchema>,
 > extends Criteria<CSchema, Alias> {
-  accept<Context, Result>(
-    visitor: ICriteriaVisitor<Context, Result>,
-    context: Context,
-  ): Result | Promise<Result> {
+  accept<TranslationContext, TranslationOutput>(
+    visitor: ICriteriaVisitor<TranslationContext, TranslationOutput>,
+    context: TranslationContext,
+  ): TranslationOutput {
     return visitor.visitRoot(this, context);
   }
 }

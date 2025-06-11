@@ -200,8 +200,6 @@ describe('FilterGroup', () => {
       expect(result).toEqual(complexGroup);
     });
   });
-  // criteria/filter/__tests__/filter-group.test.ts
-  // ... (previous imports remain the same)
 
   describe('FilterGroup - Advanced Cases', () => {
     describe('edge cases normalization', () => {

@@ -11,13 +11,13 @@ export class InnerJoinCriteria<
   CSchema extends CriteriaSchema,
   Alias extends SelectedAliasOf<CSchema> = SelectedAliasOf<CSchema>,
 > extends Criteria<CSchema, Alias> {
-  accept<Context, Result>(
-    visitor: ICriteriaVisitor<Context, Result>,
+  accept<TranslationContext, TranslationOutput>(
+    visitor: ICriteriaVisitor<TranslationContext, TranslationOutput>,
     parameters:
       | PivotJoin<CriteriaSchema, CSchema, JoinRelationType>
       | SimpleJoin<CriteriaSchema, CSchema, JoinRelationType>,
-    context: Context,
-  ): Result | Promise<Result> {
+    context: TranslationContext,
+  ): TranslationOutput {
     return visitor.visitInnerJoin(this, parameters, context);
   }
 }

@@ -1,6 +1,4 @@
 import { GetTypedCriteriaSchema } from '../../types/schema.types.js';
-import { CriteriaFactory } from '../../criteria-factory.js';
-import { FilterOperator } from '../../types/operator.types.js';
 
 export const PostSchema = GetTypedCriteriaSchema({
   source_name: 'post',
@@ -65,70 +63,3 @@ export const DirectionSchema = GetTypedCriteriaSchema({
     },
   ],
 });
-
-// Criteria.Create(PostSchema, 'posts')
-//   .where({
-//     field: 'title',
-//     operator: FilterOperator.LIKE,
-//     value: 'New NPM Package Released',
-//   })
-//   .join(
-//     Criteria.CreateInnerJoin(CommentSchema, 'comments').join(
-//       Criteria.CreateInnerJoin(UserSchema, 'user'),
-//       {
-//         parent_to_join_relation_type: 'many_to_one',
-//         parent_field: 'uuid',
-//         join_field: 'uuid',
-//       },
-//     ),
-//     {
-//       parent_to_join_relation_type: 'one_to_many',
-//       parent_field: 'uuid',
-//       join_field: 'uuid',
-//     },
-//   )
-//   .orderBy('uuid', 'ASC')
-//   .setSkip(10)
-//   .setTake(3)
-//   .setSelect(['uuid', 'body', 'user_uuid'])
-//   .setCursor(
-//     [
-//       { value: '', field: 'uuid' },
-//       { value: '', field: 'uuid' },
-//     ],
-//     FilterOperator.LESS_THAN,
-//     'ASC',
-//   );
-const field = {
-  field: 'uuid',
-  value: '',
-  operator: FilterOperator.IS_NOT_NULL,
-} as const;
-const permission = CriteriaFactory.GetInnerJoinCriteria(
-  PermissionSchema,
-  'permissions',
-);
-permission.where(field);
-CriteriaFactory.GetCriteria(UserSchema, 'user').join(permission, {
-  join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
-  parent_field: { pivot_field: 'user_uuid', reference: 'uuid' },
-  pivot_source_name: 'sadasd',
-});
-/*Criteria.CreateInnerJoin(UserSchema, 'user');
-Criteria.Create(PostSchema, 'posts').join(
-  Criteria.CreateLeftJoin(UserSchema, 'publisher'),
-  {
-    join_field: 'uuid',
-    parent_field: 'user_uuid',
-    parent_to_join_relation_type: 'many_to_one',
-  },
-);
-
-Criteria.Create(PostSchema, 'posts').join(
-  Criteria.CreateLeftJoin(UserSchema, 'publisher'),
-  {
-    join_field: 'uuid',
-    parent_field: 'user_uuid',
-    parent_to_join_relation_type: 'many_to_one',
-  },
-);*/

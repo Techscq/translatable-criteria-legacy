@@ -19,6 +19,7 @@ This library simplifies the construction of complex data queries by providing a 
 - **Type-Safe Criteria Building:** Construct queries with a fluent, strongly-typed interface.
 - **Powerful Filtering:** Define intricate filtering logic with multiple operators and grouping. Filter groups are automatically normalized for consistency.
 - **Flexible Join System:** Support for various join types (inner, left, full outer) and pivot table configurations.
+- **Default Join Field Selection:** When a join is added, if `setSelect()` is not explicitly called on the `JoinCriteria`, all fields from the joined schema will be automatically included in the main `SELECT` clause. This can be overridden by using `setSelect()` on the specific `JoinCriteria`.
 - **Field Selection:** Specify exactly which fields to retrieve using `setSelect()` or `selectAll()`.
 - **Pagination:** Supports both offset-based (`setTake()`, `setSkip()`) and cursor-based (`setCursor()`) pagination.
 - **Visitor Pattern for Translation:** Criteria objects implement an `accept` method, allowing for clean and extensible translation logic via the Visitor pattern.
@@ -126,9 +127,9 @@ const criteria = CriteriaFactory.GetCriteria(UserSchema, 'users')
     value: 'contact@nelsoncabrera.dev',
   })
   .join(CriteriaFactory.GetInnerJoinCriteria(PermissionSchema, 'permissions'), {
-    join_source_name: 'permission_user',
+    pivot_source_name: 'permission_user',
     join_field: { pivot_field: 'permission_uuid', reference: 'uuid' },
-    parent_join_field: { pivot_field: 'user_uuid', reference: 'uuid' },
+    parent_field: { pivot_field: 'user_uuid', reference: 'uuid' },
   });
 ```
 
@@ -172,12 +173,12 @@ const userCriteriaWithPermissions = CriteriaFactory.GetCriteria(
     value: 'contact@nelsoncabrera.dev',
   })
   .join(CriteriaFactory.GetLeftJoinCriteria(PermissionSchema, 'permissions'), {
-    join_source_name: 'permission_user', // pivot table name
+    pivot_source_name: 'permission_user', // pivot table name
     join_field: {
       pivot_field: 'permission_uuid',
       reference: 'uuid',
     },
-    parent_join_field: {
+    parent_field: {
       pivot_field: 'user_uuid',
       reference: 'uuid',
     },
@@ -196,6 +197,10 @@ const userCriteriaWithPermissions = CriteriaFactory.GetCriteria(
 
 - [x] Implement cursor pagination ability.
 - [x] Implement field selection (`select`).
+- [x] Implement `ORDER BY` for root and joined criteria.
+- [x] Implement `LIMIT` and `OFFSET` (take/skip) for pagination.
+- [x] Implement `PivotJoin` for many-to-many relationships in translators.
+- [ ] Implement `OuterJoin` (Full Outer Join) in translators.
 - [ ] Provide example translator implementations (e.g., for a common ORM or SQL dialect).
 - [ ] Enhance documentation with more detailed examples for translator development.
 - [ ] Explore utility functions to simplify translator development.

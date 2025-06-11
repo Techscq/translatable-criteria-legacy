@@ -13,17 +13,20 @@ import type { PivotJoin, SimpleJoin } from './join-parameter.types.js';
 
 /**
  * Visitor interface for traversing Criteria objects.
- * @template Context - The type of the context object passed during traversal.
- * @template Output - The type of the result returned by visitor methods.
+ * @template TranslationContext - The type of the context object passed during traversal.
+ * @template TranslationOutput - The type of the result returned by visitor methods.
  */
-export interface ICriteriaVisitor<Context, Output = Context> {
+export interface ICriteriaVisitor<
+  TranslationContext,
+  TranslationOutput = TranslationContext,
+> {
   visitRoot<
     RootCSchema extends CriteriaSchema,
     RootAlias extends SelectedAliasOf<RootCSchema>,
   >(
     criteria: RootCriteria<RootCSchema, RootAlias>,
-    context: Context,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   visitInnerJoin<
     ParentCSchema extends CriteriaSchema,
@@ -34,8 +37,8 @@ export interface ICriteriaVisitor<Context, Output = Context> {
     parameters:
       | PivotJoin<ParentCSchema, JoinCSchema, JoinRelationType>
       | SimpleJoin<ParentCSchema, JoinCSchema, JoinRelationType>,
-    context: Context,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   visitLeftJoin<
     ParentCSchema extends CriteriaSchema,
@@ -46,8 +49,8 @@ export interface ICriteriaVisitor<Context, Output = Context> {
     parameters:
       | PivotJoin<ParentCSchema, JoinCSchema, JoinRelationType>
       | SimpleJoin<ParentCSchema, JoinCSchema, JoinRelationType>,
-    context: Context,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   visitOuterJoin<
     ParentCSchema extends CriteriaSchema,
@@ -58,21 +61,24 @@ export interface ICriteriaVisitor<Context, Output = Context> {
     parameters:
       | PivotJoin<ParentCSchema, JoinCSchema, JoinRelationType>
       | SimpleJoin<ParentCSchema, JoinCSchema, JoinRelationType>,
-    context: Context,
-  ): Output | Promise<Output>;
+    context: TranslationContext,
+  ): TranslationOutput;
 
   visitFilter<FieldType extends string>(
     filter: Filter<FieldType>,
-    context: Context,
-  ): Output | Promise<Output>;
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 
   visitAndGroup<FieldType extends string>(
     group: FilterGroup<FieldType>,
-    context: Context,
-  ): Output | Promise<Output>;
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 
   visitOrGroup<FieldType extends string>(
     group: FilterGroup<FieldType>,
-    context: Context,
-  ): Output | Promise<Output>;
+    currentAlias: string,
+    context: TranslationContext,
+  ): TranslationOutput;
 }
