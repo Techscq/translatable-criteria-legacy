@@ -1,9 +1,9 @@
 // --- Core Classes, Factories, and Abstract Classes ---
 export { CriteriaFactory } from './criteria-factory.js';
-export { RootCriteria } from './root.criteria.js';
-export { InnerJoinCriteria } from './inner.join-criteria.js';
-export { LeftJoinCriteria } from './left.join-criteria.js';
-export { OuterJoinCriteria } from './outer.join-criteria.js';
+//export { RootCriteria } from './root.criteria.js';
+//export { InnerJoinCriteria } from './inner.join-criteria.js';
+//export { LeftJoinCriteria } from './left.join-criteria.js';
+//export { OuterJoinCriteria } from './outer.join-criteria.js';
 export { CriteriaTranslator } from './translator/criteria-translator.js';
 
 // --- Core Interfaces (for extending or understanding) ---

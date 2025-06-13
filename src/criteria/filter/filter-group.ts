@@ -25,6 +25,9 @@ export class FilterGroup<T extends string = string>
       return new Filter(item);
     });
   }
+  get type(): LogicalOperator {
+    return this._logicalOperator;
+  }
 
   get items(): ReadonlyArray<Filter<T> | FilterGroup<T>> {
     return this._items;

@@ -1,6 +1,7 @@
 import type {
   CriteriaSchema,
   FieldOfSchema,
+  SchemaJoins,
   SelectedAliasOf,
 } from './types/schema.types.js';
 
@@ -16,6 +17,10 @@ import type {
   SpecificMatchingJoinConfig,
 } from './types/join-utility.types.js';
 import { FilterOperator } from './types/operator.types.js';
+import type {
+  PivotJoinInput,
+  SimpleJoinInput,
+} from './types/join-input.types.js';
 
 export abstract class Criteria<
   TSchema extends CriteriaSchema,
@@ -34,6 +39,11 @@ export abstract class Criteria<
     protected readonly schema: TSchema,
     protected _alias: CurrentAlias,
   ) {
+    if (!schema.alias.includes(this._alias))
+      throw new Error(
+        `Unsupported alia ${this._alias} for schema ${schema.source_name}`,
+      );
+
     this._source_name = schema.source_name;
   }
   get select() {
@@ -51,11 +61,7 @@ export abstract class Criteria<
 
   setSelect(selectFields: Array<FieldOfSchema<TSchema>>) {
     for (const field of selectFields) {
-      if (!this.schema.fields.includes(field)) {
-        throw new Error(
-          `The field '${String(field)}' is not defined in the schema '${this.schema.source_name}'.`,
-        );
-      }
+      this.assetFieldOnSchema(field);
     }
     this._selectAll = false;
     this._select = new Set(selectFields);
@@ -109,22 +115,32 @@ export abstract class Criteria<
     return this;
   }
 
+  protected assetFieldOnSchema(field: FieldOfSchema<TSchema>) {
+    if (!this.schema.fields.includes(field))
+      throw new Error(
+        `The field '${String(field)}' is not defined in the schema '${this.schema.source_name}'.`,
+      );
+  }
   orderBy(field: FieldOfSchema<TSchema>, direction: OrderDirection) {
+    this.assetFieldOnSchema(field);
     this._orders.push(new Order(direction, field));
     return this;
   }
 
   where(filterPrimitive: FilterPrimitive<FieldOfSchema<TSchema>>) {
+    this.assetFieldOnSchema(filterPrimitive.field);
     this._filterManager.where(filterPrimitive);
     return this;
   }
 
   andWhere(filterPrimitive: FilterPrimitive<FieldOfSchema<TSchema>>) {
+    this.assetFieldOnSchema(filterPrimitive.field);
     this._filterManager.andWhere(filterPrimitive);
     return this;
   }
 
   orWhere(filterPrimitive: FilterPrimitive<FieldOfSchema<TSchema>>) {
+    this.assetFieldOnSchema(filterPrimitive.field);
     this._filterManager.orWhere(filterPrimitive);
     return this;
   }
@@ -148,6 +164,11 @@ export abstract class Criteria<
     if (typeof criteriaToJoin === 'string') {
       throw new Error(`Invalid criteriaToJoin: ${criteriaToJoin}`);
     }
+
+    typeof joinParameter.parent_field === 'object'
+      ? this.assetFieldOnSchema(joinParameter.parent_field.reference)
+      : this.assetFieldOnSchema(joinParameter.parent_field);
+
     const joinConfig = this.schema.joins.find(
       (join) => join.alias === criteriaToJoin.alias,
     );
@@ -157,15 +178,53 @@ export abstract class Criteria<
       );
     }
 
+    this.assertIsValidJoinOptions(joinConfig, joinParameter);
+
     const fullJoinParameters = {
       ...joinParameter,
       parent_alias: this.alias,
       parent_source_name: this.sourceName,
       parent_to_join_relation_type: joinConfig.join_relation_type,
     };
-
     this._joinManager.addJoin(criteriaToJoin, fullJoinParameters);
     return this;
+  }
+
+  private assertIsValidJoinOptions<TJoinSchema extends CriteriaSchema>(
+    joinConfig: SchemaJoins<string>,
+    joinParameter:
+      | PivotJoinInput<TSchema, TJoinSchema>
+      | SimpleJoinInput<TSchema, TJoinSchema>,
+  ) {
+    const isPivotFieldObject = (
+      field: any,
+    ): field is { pivot_field: string; reference: string } => {
+      return (
+        typeof field === 'object' &&
+        field !== null &&
+        'pivot_field' in field &&
+        'reference' in field
+      );
+    };
+    if (joinConfig.join_relation_type === 'many_to_many') {
+      if (
+        !isPivotFieldObject(joinParameter.parent_field) ||
+        !isPivotFieldObject(joinParameter.join_field)
+      ) {
+        throw new Error(
+          `Invalid JoinOptions for 'many_to_many' join. Expected parent_field and join_field to be objects with 'pivot_field' and 'reference' properties. Alias: '${String(joinConfig.alias)}'`,
+        );
+      }
+    } else {
+      if (
+        typeof joinParameter.parent_field !== 'string' ||
+        typeof joinParameter.join_field !== 'string'
+      ) {
+        throw new Error(
+          `Invalid JoinOptions for '${joinConfig.join_relation_type}' join. Expected parent_field and join_field to be strings. Alias: '${String(joinConfig.alias)}'`,
+        );
+      }
+    }
   }
 
   get cursor() {
@@ -184,11 +243,7 @@ export abstract class Criteria<
       throw new Error(`The cursor must have exactly 2 elements`);
 
     for (const filterPrimitive of cursorFilters) {
-      if (!this.schema.fields.includes(filterPrimitive.field)) {
-        throw new Error(
-          `The field '${String(filterPrimitive.field)}' is not defined in the schema '${this.schema.source_name}'.`,
-        );
-      }
+      this.assetFieldOnSchema(filterPrimitive.field);
     }
     this._cursor = new Cursor(cursorFilters, operator, order);
     return this;

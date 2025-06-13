@@ -19,6 +19,7 @@ import type { PivotJoin, SimpleJoin } from './join-parameter.types.js';
 export interface ICriteriaVisitor<
   TranslationContext,
   TranslationOutput = TranslationContext,
+  TFilterVisitorOutput extends any = any,
 > {
   visitRoot<
     RootCSchema extends CriteriaSchema,
@@ -67,8 +68,7 @@ export interface ICriteriaVisitor<
   visitFilter<FieldType extends string>(
     filter: Filter<FieldType>,
     currentAlias: string,
-    context: TranslationContext,
-  ): TranslationOutput;
+  ): TFilterVisitorOutput;
 
   visitAndGroup<FieldType extends string>(
     group: FilterGroup<FieldType>,

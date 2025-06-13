@@ -33,7 +33,13 @@ import type { ICriteriaVisitor } from '../types/visitor-interface.types.js';
 export abstract class CriteriaTranslator<
   TranslationContext,
   TranslationOutput = TranslationContext,
-> implements ICriteriaVisitor<TranslationContext, TranslationOutput>
+  TFilterVisitorOutput extends any = any,
+> implements
+    ICriteriaVisitor<
+      TranslationContext,
+      TranslationOutput,
+      TFilterVisitorOutput
+    >
 {
   /**
    * Translates a criteria into the target source format
@@ -98,8 +104,7 @@ export abstract class CriteriaTranslator<
   abstract visitFilter<FieldType extends string>(
     filter: Filter<FieldType>,
     currentAlias: string,
-    context: TranslationContext,
-  ): TranslationOutput;
+  ): TFilterVisitorOutput;
 
   abstract visitAndGroup<FieldType extends string>(
     group: FilterGroup<FieldType>,

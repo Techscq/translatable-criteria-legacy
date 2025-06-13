@@ -1,23 +1,27 @@
-import { FilterGroup } from '../../filter/filter-group.js';
-import { Filter } from '../../filter/filter.js';
-import type { InnerJoinCriteria } from '../../inner.join-criteria.js';
-import type { LeftJoinCriteria } from '../../left.join-criteria.js';
-import type { OuterJoinCriteria } from '../../outer.join-criteria.js';
-import type { RootCriteria } from '../../root.criteria.js';
+import { FilterGroup } from '../../../filter/filter-group.js';
+import { Filter } from '../../../filter/filter.js';
+import type { InnerJoinCriteria } from '../../../inner.join-criteria.js';
+import type { LeftJoinCriteria } from '../../../left.join-criteria.js';
+import type { OuterJoinCriteria } from '../../../outer.join-criteria.js';
+import type { RootCriteria } from '../../../root.criteria.js';
 import type {
   PivotJoin,
   SimpleJoin,
-} from '../../types/join-parameter.types.js';
+} from '../../../types/join-parameter.types.js';
 import type {
   CriteriaSchema,
   SelectedAliasOf,
   JoinRelationType,
-} from '../../types/schema.types.js';
-import { CriteriaTranslator } from '../criteria-translator.js';
-import { FilterOperator } from '../../types/operator.types.js';
-import type { Order } from '../../order/order.js';
+} from '../../../types/schema.types.js';
+import { CriteriaTranslator } from '../../criteria-translator.js';
+import { FilterOperator } from '../../../types/operator.types.js';
+import type { Order } from '../../../order/order.js';
 
-export class MysqlTranslator extends CriteriaTranslator<string, string> {
+export class MysqlTranslator extends CriteriaTranslator<
+  string,
+  string,
+  string
+> {
   private params: unknown[] = [];
   private orderByClauses: string[] = [];
 
@@ -291,7 +295,6 @@ export class MysqlTranslator extends CriteriaTranslator<string, string> {
   override visitFilter<FieldType extends string>(
     filter: Filter<FieldType>,
     currentAlias: string,
-    _queryContext: string,
   ): string {
     const fieldName = this.escapeField(filter.field, currentAlias);
 
@@ -338,7 +341,9 @@ export class MysqlTranslator extends CriteriaTranslator<string, string> {
     queryContext: string,
   ): string[] {
     const conditions = group.items.map((item) =>
-      item.accept(this, currentAliasForGroup, queryContext),
+      item instanceof FilterGroup
+        ? item.accept(this, currentAliasForGroup, queryContext)
+        : item.accept(this, currentAliasForGroup),
     );
     return conditions.filter(
       (c): c is string => typeof c === 'string' && c.length > 0,

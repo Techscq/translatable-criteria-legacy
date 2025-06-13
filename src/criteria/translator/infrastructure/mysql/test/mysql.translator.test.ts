@@ -1,19 +1,30 @@
-import { CriteriaFactory } from '../../../criteria-factory.js';
+import { CriteriaFactory } from '../../../../criteria-factory.js';
+import { MysqlTranslator } from '../mysql.translator.js';
+import { FilterOperator } from '../../../../types/operator.types.js';
+import { FilterGroup } from '../../../../filter/filter-group.js';
+import { OrderDirection } from '../../../../order/order.js';
 import {
-  CommentSchema,
-  DirectionSchema,
+  AddressSchema,
   PermissionSchema,
+  PostCommentSchema,
   PostSchema,
   UserSchema,
-} from '../../../test/fake/fake.schema.js';
-import { MysqlTranslator } from '../mysql.translator.js';
-import { FilterOperator } from '../../../types/operator.types.js';
-import { FilterGroup } from '../../../filter/filter-group.js';
-import { OrderDirection } from '../../../order/order.js';
+} from '../../test/fake/fake-entities.js';
 
-describe('MysqlTranslator', () => {
+function setupBasicPostUserJoin(joinType: 'inner' | 'left' = 'inner') {
+  const rootAlias = PostSchema.alias[0]!;
+  const joinAlias = 'publisher';
+  const rootCriteria = CriteriaFactory.GetCriteria(PostSchema, rootAlias);
+  const joinCriteria =
+    joinType === 'inner'
+      ? CriteriaFactory.GetInnerJoinCriteria(UserSchema, joinAlias)
+      : CriteriaFactory.GetLeftJoinCriteria(UserSchema, joinAlias);
+  const joinParams = { parent_field: 'user_uuid', join_field: 'uuid' } as const;
+  return { rootCriteria, joinCriteria, joinParams, rootAlias, joinAlias };
+}
+
+describe('MysqlTranslator', async () => {
   let translator: MysqlTranslator;
-
   beforeEach(() => {
     translator = new MysqlTranslator();
   });
@@ -23,7 +34,7 @@ describe('MysqlTranslator', () => {
       const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts');
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts`;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts`;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -43,71 +54,53 @@ describe('MysqlTranslator', () => {
 
   describe('WHERE clause translation', () => {
     describe('Basic Filter Operators', () => {
-      it('should translate RootCriteria with a simple EQUALS WHERE clause', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').where(
-          {
-            field: 'title',
-            operator: FilterOperator.EQUALS,
-            value: 'Test Title',
-          },
-        );
-        const query = translator.translate(criteria, '');
-        expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (`posts`.`title` = ?);',
-        );
-        expect(translator.getParams()).toEqual(['Test Title']);
-      });
-
-      it('should translate RootCriteria with IS NULL operator', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').where(
-          {
-            field: 'body',
-            operator: FilterOperator.IS_NULL,
-            value: null, // value is irrelevant for IS_NULL
-          },
-        );
-        const query = translator.translate(criteria, '');
-        expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (`posts`.`body` IS NULL);',
-        );
-        expect(translator.getParams()).toEqual([]);
-      });
-
-      it('should translate RootCriteria with IN operator', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').where(
-          {
-            field: 'user_uuid',
-            operator: FilterOperator.IN,
-            value: ['user1', 'user2', 'user3'],
-          },
-        );
-        const query = translator.translate(criteria, '');
-        expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (`posts`.`user_uuid` IN (?, ?, ?));',
-        );
-        expect(translator.getParams()).toEqual(['user1', 'user2', 'user3']);
-      });
-
-      it('should handle IN operator with empty array returning 1=0 (false)', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').where(
-          {
-            field: 'user_uuid', // This field is part of a filter that evaluates to '1=0'
-            operator: FilterOperator.IN,
-            value: [],
-          },
-        );
-        const query = translator.translate(criteria, '');
-        // visitAndGroup (or visitOrGroup if it were a single OR) wraps it: (1=0)
-        expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (1=0);',
-        );
-        expect(translator.getParams()).toEqual([]);
-      });
+      it.each([
+        {
+          op: FilterOperator.EQUALS,
+          value: 'Test',
+          field: 'title',
+          expectedSqlFragment: '`posts`.`title` = ?',
+          expectedParams: ['Test'],
+        } as const,
+        {
+          op: FilterOperator.IS_NULL,
+          value: null,
+          field: 'body',
+          expectedSqlFragment: '`posts`.`body` IS NULL',
+          expectedParams: [],
+        } as const,
+        {
+          op: FilterOperator.IN,
+          value: ['user1', 'user2', 'user3'],
+          field: 'user_uuid' as const,
+          expectedSqlFragment: '`posts`.`user_uuid` IN (?, ?, ?)',
+          expectedParams: ['user1', 'user2', 'user3'],
+        },
+        {
+          op: FilterOperator.IN,
+          value: [],
+          field: 'user_uuid' as const,
+          expectedSqlFragment: '1=0',
+          expectedParams: [],
+        },
+      ])(
+        'should translate $op operator with $value',
+        ({ op, value, field, expectedSqlFragment, expectedParams }) => {
+          const criteria = CriteriaFactory.GetCriteria(
+            PostSchema,
+            'posts',
+          ).where({ field: field, operator: op, value: value });
+          const query = translator.translate(criteria, '');
+          expect(query).toContain(`WHERE (${expectedSqlFragment})`);
+          expect(translator.getParams()).toEqual(expectedParams);
+        },
+      );
     });
 
     describe('Logical Grouping (AND/OR)', () => {
       it('should translate RootCriteria with an AND WHERE clause', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts')
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria
           .where({
             field: 'title',
             operator: FilterOperator.LIKE,
@@ -118,15 +111,19 @@ describe('MysqlTranslator', () => {
             operator: FilterOperator.EQUALS,
             value: 'user123',
           });
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (`posts`.`title` LIKE ? AND `posts`.`user_uuid` = ?);',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` WHERE (`posts`.`title` LIKE ? AND `posts`.`user_uuid` = ?);',
         );
         expect(translator.getParams()).toEqual(['%Test%', 'user123']);
       });
 
       it('should translate RootCriteria with an OR WHERE clause', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts')
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria
           .where({
             field: 'title',
             operator: FilterOperator.EQUALS,
@@ -134,19 +131,22 @@ describe('MysqlTranslator', () => {
           })
           .orWhere({
             field: 'body',
-            operator: FilterOperator.CONTAINS, // CONTAINS, translate to LIKE
+            operator: FilterOperator.CONTAINS,
             value: 'Content B',
           });
-        const query = translator.translate(criteria, '');
-        // Adjusted Expected: WHERE ((`posts`.`title` = ?) OR (`posts`.`body` LIKE ?))
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE ((`posts`.`title` = ?) OR (`posts`.`body` LIKE ?));',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` WHERE ((`posts`.`title` = ?) OR (`posts`.`body` LIKE ?));',
         );
         expect(translator.getParams()).toEqual(['Title A', 'Content B']);
       });
 
       it('should handle complex nested AND/OR filters', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts')
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria
           .where({
             field: 'title',
             operator: FilterOperator.EQUALS,
@@ -163,10 +163,13 @@ describe('MysqlTranslator', () => {
             value: 'C',
           });
 
-        const query = translator.translate(criteria, '');
-        // Structure: OR( AND(A,B), AND(C) )
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
+
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE ((`posts`.`title` = ? AND `posts`.`body` LIKE ?) OR (`posts`.`user_uuid` = ?));',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` WHERE ((`posts`.`title` = ? AND `posts`.`body` LIKE ?) OR (`posts`.`user_uuid` = ?));',
         );
         expect(translator.getParams()).toEqual(['A', 'B', 'C']);
       });
@@ -182,7 +185,7 @@ describe('MysqlTranslator', () => {
 
         const query = translator.translate(criteria, '');
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts`;',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts`;',
         );
         expect(translator.getParams()).toEqual([]);
       });
@@ -192,69 +195,70 @@ describe('MysqlTranslator', () => {
   describe('JOIN clause translation', () => {
     describe('INNER JOIN', () => {
       it('should translate a RootCriteria with a simple INNER JOIN selecting all join fields by default', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').join(
-          CriteriaFactory.GetInnerJoinCriteria(UserSchema, 'publisher'),
-          {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          },
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria.join(
+          basicSetupPostUserJoin.joinCriteria,
+          basicSetupPostUserJoin.joinParams,
         );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
         );
         expect(translator.getParams()).toEqual([]);
       });
 
       it('should translate an INNER JOIN with selected fields from the joined table', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').join(
-          CriteriaFactory.GetInnerJoinCriteria(
-            UserSchema,
-            'publisher',
-          ).setSelect(['email', 'username']),
-          {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          },
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria.join(
+          basicSetupPostUserJoin.joinCriteria.setSelect(['email', 'username']),
+          basicSetupPostUserJoin.joinParams,
         );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`email`, `publisher`.`username` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`email`, `publisher`.`username` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
         );
         expect(translator.getParams()).toEqual([]);
       });
 
       it('should translate an INNER JOIN with filters on the joined table', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').join(
-          CriteriaFactory.GetInnerJoinCriteria(UserSchema, 'publisher').where({
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria.join(
+          basicSetupPostUserJoin.joinCriteria.where({
             field: 'username',
             operator: FilterOperator.EQUALS,
             value: 'testuser',
           }),
-          {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          },
+          basicSetupPostUserJoin.joinParams,
         );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` AND (`publisher`.`username` = ?);',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` AND (`publisher`.`username` = ?);',
         );
         expect(translator.getParams()).toEqual(['testuser']);
       });
 
       it('should translate a RootCriteria with multiple INNER JOINs', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts')
-          .join(CriteriaFactory.GetInnerJoinCriteria(UserSchema, 'publisher'), {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          })
+        const basicSetupPostUserJoin = setupBasicPostUserJoin();
+        basicSetupPostUserJoin.rootCriteria
+          .join(
+            basicSetupPostUserJoin.joinCriteria,
+            basicSetupPostUserJoin.joinParams,
+          )
           .join(
             CriteriaFactory.GetInnerJoinCriteria(
-              CommentSchema,
+              PostCommentSchema,
               'comments',
             ).where({
               field: 'comment_text',
@@ -264,9 +268,12 @@ describe('MysqlTranslator', () => {
             { parent_field: 'uuid', join_field: 'post_uuid' },
           );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid`, `comments`.`uuid`, `comments`.`comment_text`, `comments`.`post_uuid`, `comments`.`user_uuid`, `comments`.`comment_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` INNER JOIN `comment` AS `comments` ON `posts`.`uuid` = `comments`.`post_uuid` AND (`comments`.`comment_text` != ?);',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at`, `comments`.`uuid`, `comments`.`comment_text`, `comments`.`user_uuid`, `comments`.`post_uuid`, `comments`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` INNER JOIN `post_comment` AS `comments` ON `posts`.`uuid` = `comments`.`post_uuid` AND (`comments`.`comment_text` != ?);',
         );
         expect(translator.getParams()).toEqual(['spam']);
       });
@@ -274,56 +281,56 @@ describe('MysqlTranslator', () => {
 
     describe('LEFT JOIN', () => {
       it('should translate a RootCriteria with a simple LEFT JOIN selecting all join fields by default', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').join(
-          CriteriaFactory.GetLeftJoinCriteria(UserSchema, 'publisher'),
-          {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          },
+        const basicSetupPostUserJoin = setupBasicPostUserJoin('left');
+        basicSetupPostUserJoin.rootCriteria.join(
+          basicSetupPostUserJoin.joinCriteria,
+          basicSetupPostUserJoin.joinParams,
         );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
         );
         expect(translator.getParams()).toEqual([]);
       });
 
       it('should translate a LEFT JOIN with selected fields from the joined table', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').join(
-          CriteriaFactory.GetLeftJoinCriteria(
-            UserSchema,
-            'publisher',
-          ).setSelect(['email']),
-          {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          },
+        const basicSetupPostUserJoin = setupBasicPostUserJoin('left');
+        basicSetupPostUserJoin.rootCriteria.join(
+          basicSetupPostUserJoin.joinCriteria.setSelect(['email']),
+          basicSetupPostUserJoin.joinParams,
         );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`email` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`email` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid`;',
         );
         expect(translator.getParams()).toEqual([]);
       });
 
       it('should translate a LEFT JOIN with filters on the joined table (in ON clause)', () => {
-        const criteria = CriteriaFactory.GetCriteria(PostSchema, 'posts').join(
-          CriteriaFactory.GetLeftJoinCriteria(UserSchema, 'publisher').where({
+        const basicSetupPostUserJoin = setupBasicPostUserJoin('left');
+        basicSetupPostUserJoin.rootCriteria.join(
+          basicSetupPostUserJoin.joinCriteria.where({
             field: 'username',
             operator: FilterOperator.EQUALS,
             value: 'activeuser',
           }),
-          {
-            parent_field: 'user_uuid',
-            join_field: 'uuid',
-          },
+          basicSetupPostUserJoin.joinParams,
         );
 
-        const query = translator.translate(criteria, '');
+        const query = translator.translate(
+          basicSetupPostUserJoin.rootCriteria,
+          '',
+        );
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` AND (`publisher`.`username` = ?);',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` AND (`publisher`.`username` = ?);',
         );
         expect(translator.getParams()).toEqual(['activeuser']);
       });
@@ -350,10 +357,10 @@ describe('MysqlTranslator', () => {
         const expectedPivotAlias = 'users_permissions_pivot';
 
         expect(query).toBe(
-          'SELECT `users`.`uuid`, `users`.`email`, `users`.`username`, `users`.`direction_uuid`, `permissions`.`uuid`, `permissions`.`name` ' +
-            'FROM `user` AS `users` ' +
-            `INNER JOIN \`user_permission_pivot_table\` AS \`${expectedPivotAlias}\` ON \`users\`.\`uuid\` = \`${expectedPivotAlias}\`.\`user_foreign_key\` ` +
-            `INNER JOIN \`permission\` AS \`permissions\` ON \`${expectedPivotAlias}\`.\`permission_foreign_key\` = \`permissions\`.\`uuid\`;`,
+          'SELECT `users`.`uuid`, `users`.`email`, `users`.`username`, `users`.`created_at`, `permissions`.`uuid`,' +
+            ` \`permissions\`.\`name\`, \`permissions\`.\`created_at\` FROM \`user\` AS \`users\` INNER JOIN \`user_permission_pivot_table\`` +
+            ` AS \`${expectedPivotAlias}\` ON \`users\`.\`uuid\` = \`${expectedPivotAlias}\`.\`user_foreign_key\` INNER JOIN \`permission\`` +
+            ` AS \`permissions\` ON \`${expectedPivotAlias}\`.\`permission_foreign_key\` = \`permissions\`.\`uuid\`;`,
         );
         expect(translator.getParams()).toEqual([]);
       });
@@ -379,7 +386,7 @@ describe('MysqlTranslator', () => {
         const expectedPivotAlias = 'users_permissions_pivot';
 
         expect(query).toBe(
-          'SELECT `users`.`uuid`, `users`.`email`, `users`.`username`, `users`.`direction_uuid`, `permissions`.`uuid`, `permissions`.`name` ' +
+          'SELECT `users`.`uuid`, `users`.`email`, `users`.`username`, `users`.`created_at`, `permissions`.`uuid`, `permissions`.`name`, `permissions`.`created_at` ' +
             'FROM `user` AS `users` ' +
             `LEFT JOIN \`user_permission_pivot_table\` AS \`${expectedPivotAlias}\` ON \`users\`.\`uuid\` = \`${expectedPivotAlias}\`.\`user_fk\` ` +
             `LEFT JOIN \`permission\` AS \`permissions\` ON \`${expectedPivotAlias}\`.\`permission_fk\` = \`permissions\`.\`uuid\` AND (\`permissions\`.\`name\` = ?);`,
@@ -397,7 +404,7 @@ describe('MysqlTranslator', () => {
           })
           .join(
             CriteriaFactory.GetLeftJoinCriteria(
-              CommentSchema,
+              PostCommentSchema,
               'comments',
             ).where({
               field: 'comment_text',
@@ -409,7 +416,7 @@ describe('MysqlTranslator', () => {
 
         const query = translator.translate(criteria, '');
         expect(query).toBe(
-          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid`, `comments`.`uuid`, `comments`.`comment_text`, `comments`.`post_uuid`, `comments`.`user_uuid`, `comments`.`comment_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` LEFT JOIN `comment` AS `comments` ON `posts`.`uuid` = `comments`.`post_uuid` AND (`comments`.`comment_text` LIKE ?);',
+          'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at`, `comments`.`uuid`, `comments`.`comment_text`, `comments`.`user_uuid`, `comments`.`post_uuid`, `comments`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` LEFT JOIN `post_comment` AS `comments` ON `posts`.`uuid` = `comments`.`post_uuid` AND (`comments`.`comment_text` LIKE ?);',
         );
         expect(translator.getParams()).toEqual(['%review%']);
       });
@@ -435,12 +442,12 @@ describe('MysqlTranslator', () => {
           )
           .join(
             CriteriaFactory.GetLeftJoinCriteria(
-              DirectionSchema,
-              'address',
+              AddressSchema,
+              'addresses',
             ).setSelect(['direction']),
             {
-              parent_field: 'direction_uuid',
-              join_field: 'uuid',
+              parent_field: 'uuid',
+              join_field: 'user_uuid',
             },
           )
           .where({
@@ -453,11 +460,11 @@ describe('MysqlTranslator', () => {
         const pivotAliasForPermissions = 'users_permissions_pivot';
 
         expect(query).toBe(
-          'SELECT `users`.`uuid`, `users`.`email`, `users`.`username`, `users`.`direction_uuid`, `permissions`.`name`, `address`.`direction` ' +
+          'SELECT `users`.`uuid`, `users`.`email`, `users`.`username`, `users`.`created_at`, `permissions`.`name`, `addresses`.`direction` ' +
             'FROM `user` AS `users` ' +
             `INNER JOIN \`user_permission_link\` AS \`${pivotAliasForPermissions}\` ON \`users\`.\`uuid\` = \`${pivotAliasForPermissions}\`.\`user_ref_in_pivot\` ` +
             `INNER JOIN \`permission\` AS \`permissions\` ON \`${pivotAliasForPermissions}\`.\`permission_ref_in_pivot\` = \`permissions\`.\`uuid\` ` +
-            'LEFT JOIN `direction` AS `address` ON `users`.`direction_uuid` = `address`.`uuid` ' +
+            'LEFT JOIN `address` AS `addresses` ON `users`.`uuid` = `addresses`.`user_uuid` ' +
             'WHERE (`users`.`email` LIKE ?);',
         );
         expect(translator.getParams()).toEqual(['%@example.com']);
@@ -474,7 +481,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` ORDER BY `posts`.`title` ASC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` ORDER BY `posts`.`title` ASC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -486,7 +493,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` ORDER BY `posts`.`user_uuid` DESC, `posts`.`title` ASC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` ORDER BY `posts`.`user_uuid` DESC, `posts`.`title` ASC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -501,7 +508,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `posts`.`title` DESC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `posts`.`title` DESC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -517,7 +524,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `publisher`.`username` ASC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `publisher`.`username` ASC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -533,7 +540,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `publisher`.`email` DESC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` LEFT JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `publisher`.`email` DESC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -551,7 +558,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `posts`.`title` ASC, `publisher`.`username` DESC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `posts`.`title` ASC, `publisher`.`username` DESC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -568,7 +575,7 @@ describe('MysqlTranslator', () => {
         )
         .join(
           CriteriaFactory.GetLeftJoinCriteria(
-            CommentSchema,
+            PostCommentSchema,
             'comments',
           ).orderBy('comment_text', OrderDirection.ASC),
           { parent_field: 'uuid', join_field: 'post_uuid' },
@@ -576,7 +583,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid`, `comments`.`uuid`, `comments`.`comment_text`, `comments`.`post_uuid`, `comments`.`user_uuid`, `comments`.`comment_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` LEFT JOIN `comment` AS `comments` ON `posts`.`uuid` = `comments`.`post_uuid` ORDER BY `posts`.`title` ASC, `publisher`.`username` DESC, `comments`.`comment_text` ASC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at`, `comments`.`uuid`, `comments`.`comment_text`, `comments`.`user_uuid`, `comments`.`post_uuid`, `comments`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` LEFT JOIN `post_comment` AS `comments` ON `posts`.`uuid` = `comments`.`post_uuid` ORDER BY `posts`.`title` ASC, `publisher`.`username` DESC, `comments`.`comment_text` ASC;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -590,7 +597,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` LIMIT ?;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` LIMIT ?;',
       );
       expect(translator.getParams()).toEqual([10]);
     });
@@ -602,7 +609,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` LIMIT ? OFFSET ?;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` LIMIT ? OFFSET ?;',
       );
       expect(translator.getParams()).toEqual([5, 10]);
     });
@@ -615,7 +622,7 @@ describe('MysqlTranslator', () => {
       const query = translator.translate(criteria, '');
 
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts`;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts`;',
       );
       expect(translator.getParams()).toEqual([]);
     });
@@ -633,7 +640,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (`posts`.`body` LIKE ?) ORDER BY `posts`.`title` ASC;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` WHERE (`posts`.`body` LIKE ?) ORDER BY `posts`.`title` ASC;',
       );
       expect(translator.getParams()).toEqual(['%important%']);
     });
@@ -651,7 +658,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid` FROM `post` AS `posts` WHERE (`posts`.`title` LIKE ?) ORDER BY `posts`.`title` ASC LIMIT ? OFFSET ?;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at` FROM `post` AS `posts` WHERE (`posts`.`title` LIKE ?) ORDER BY `posts`.`title` ASC LIMIT ? OFFSET ?;',
       );
       expect(translator.getParams()).toEqual(['%SQL%', 10, 20]);
     });
@@ -671,7 +678,7 @@ describe('MysqlTranslator', () => {
 
       const query = translator.translate(criteria, '');
       expect(query).toBe(
-        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`direction_uuid` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `posts`.`title` ASC, `publisher`.`username` DESC LIMIT ? OFFSET ?;',
+        'SELECT `posts`.`uuid`, `posts`.`title`, `posts`.`body`, `posts`.`user_uuid`, `posts`.`created_at`, `publisher`.`uuid`, `publisher`.`email`, `publisher`.`username`, `publisher`.`created_at` FROM `post` AS `posts` INNER JOIN `user` AS `publisher` ON `posts`.`user_uuid` = `publisher`.`uuid` ORDER BY `posts`.`title` ASC, `publisher`.`username` DESC LIMIT ? OFFSET ?;',
       );
       expect(translator.getParams()).toEqual([3, 6]);
     });

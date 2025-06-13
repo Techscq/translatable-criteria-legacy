@@ -37,6 +37,11 @@
     "vitest.config.d.ts.map",
     "vitest.config.js",
     "vitest.config.js.map",
+    "integration.vitest.config.ts",
+    "integration.vitest.config.d.ts",
+    "integration.vitest.config.d.ts.map",
+    "integration.vitest.config.js",
+    "integration.vitest.config.js.map",
     "**/*.test.ts",
     "**/test",
     "**/repository"
