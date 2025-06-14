@@ -81,6 +81,7 @@ export const UserSchema = GetTypedCriteriaSchema({
     },
   ],
 });
+export type UserSchema = typeof UserSchema;
 
 export const PostSchema = GetTypedCriteriaSchema({
   source_name: 'post',
@@ -91,6 +92,7 @@ export const PostSchema = GetTypedCriteriaSchema({
     { alias: 'publisher', join_relation_type: 'many_to_one' },
   ],
 });
+export type PostSchema = typeof PostSchema;
 
 export const PermissionSchema = GetTypedCriteriaSchema({
   source_name: 'permission',
@@ -103,6 +105,7 @@ export const PermissionSchema = GetTypedCriteriaSchema({
     },
   ],
 });
+export type PermissionSchema = typeof PermissionSchema;
 
 export const PostCommentSchema = GetTypedCriteriaSchema({
   source_name: 'post_comment',
@@ -113,6 +116,7 @@ export const PostCommentSchema = GetTypedCriteriaSchema({
     { alias: 'user', join_relation_type: 'many_to_one' },
   ],
 });
+export type PostCommentSchema = typeof PostCommentSchema;
 
 export const AddressSchema = GetTypedCriteriaSchema({
   source_name: 'address',
@@ -125,6 +129,7 @@ export const AddressSchema = GetTypedCriteriaSchema({
     },
   ],
 });
+export type AddressSchema = typeof AddressSchema;
 ```
 
 ### Criteria
@@ -375,6 +380,12 @@ This project is in active development. Contributions are welcome! Please feel fr
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
+## Contact
+
+- **LinkedIn:** [Nelson Cabrera](https://www.linkedin.com/in/nulled-nelsoncabrera/)
+- **Email:** [contact@nelsoncabrera.dev](mailto:contact@nelsoncabrera.dev)
+- **GitHub:** [github.com/Techscq](https://github.com/Techscq)
+
 ## Author
 
-Nelson Cabrera (@Techscq)
+Nelson Cabrera ([@Techscq](https://github.com/Techscq))

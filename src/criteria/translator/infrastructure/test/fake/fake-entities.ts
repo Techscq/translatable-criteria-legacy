@@ -33,6 +33,7 @@ export const UserSchema = GetTypedCriteriaSchema({
     },
   ],
 });
+export type UserSchema = typeof UserSchema;
 
 export interface Post extends EntityBase {
   title: string;
@@ -50,6 +51,7 @@ export const PostSchema = GetTypedCriteriaSchema({
     { alias: 'publisher', join_relation_type: 'many_to_one' },
   ],
 });
+export type PostSchema = typeof PostSchema;
 
 export interface Comment extends EntityBase {
   comment_text: string;
@@ -66,7 +68,7 @@ export const PostCommentSchema = GetTypedCriteriaSchema({
     { alias: 'user', join_relation_type: 'many_to_one' },
   ],
 });
-
+export type PostCommentSchema = typeof PostCommentSchema;
 export interface Permission extends EntityBase {
   name: string;
   users?: User[];
@@ -83,7 +85,7 @@ export const PermissionSchema = GetTypedCriteriaSchema({
     },
   ],
 });
-
+export type PermissionSchema = typeof PermissionSchema;
 export interface Address extends EntityBase {
   direction: string;
   user: User;
@@ -100,6 +102,7 @@ export const AddressSchema = GetTypedCriteriaSchema({
     },
   ],
 });
+export type AddressSchema = typeof AddressSchema;
 export function generateFakeData() {
   let lastDate = new Date();
   const generateSequentialCreatedAt = (secondsDecrement = 1): string => {

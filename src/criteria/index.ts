@@ -1,10 +1,11 @@
 // --- Core Classes, Factories, and Abstract Classes ---
 export { CriteriaFactory } from './criteria-factory.js';
-//export { RootCriteria } from './root.criteria.js';
-//export { InnerJoinCriteria } from './inner.join-criteria.js';
-//export { LeftJoinCriteria } from './left.join-criteria.js';
-//export { OuterJoinCriteria } from './outer.join-criteria.js';
+export { RootCriteria } from './root.criteria.js';
+// export { InnerJoinCriteria } from './inner.join-criteria.js';
+// export { LeftJoinCriteria } from './left.join-criteria.js';
+// export { OuterJoinCriteria } from './outer.join-criteria.js';
 export { CriteriaTranslator } from './translator/criteria-translator.js';
+export type { ICriteriaBase } from './types/criteria.interface.js';
 
 // --- Core Interfaces (for extending or understanding) ---
 export type { ICriteriaVisitor } from './types/visitor-interface.types.js';
@@ -49,3 +50,7 @@ export type {
   JoinParameterType,
   SpecificMatchingJoinConfig,
 } from './types/join-utility.types.js';
+
+//Implemented Translators
+export { TypeOrmMysqlTranslator } from './translator/infrastructure/type-orm/type-orm.mysql.translator.js';
+export { MysqlTranslator } from './translator/infrastructure/mysql/mysql.translator.js';
