@@ -1,5 +1,11 @@
 # translatable-criteria
 
+## 0.0.3
+
+### Patch Changes
+
+- 4972a63: fix: Correct module exports and enhance schema type usability
+
 ## 0.0.2
 
 ### Patch Changes
