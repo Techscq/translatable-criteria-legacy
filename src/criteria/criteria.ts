@@ -53,18 +53,24 @@ export abstract class Criteria<
     return Array.from(this._select);
   }
 
-  selectAll() {
+  resetSelect() {
     this._selectAll = true;
     this._select.clear();
     return this;
+  }
+
+  get selectAll() {
+    return this._selectAll;
   }
 
   setSelect(selectFields: Array<FieldOfSchema<TSchema>>) {
     for (const field of selectFields) {
       this.assetFieldOnSchema(field);
     }
-    this._selectAll = false;
-    this._select = new Set(selectFields);
+    if (selectFields.length !== this.schema.fields.length) {
+      this._selectAll = false;
+      this._select = new Set(selectFields);
+    }
     return this;
   }
 
