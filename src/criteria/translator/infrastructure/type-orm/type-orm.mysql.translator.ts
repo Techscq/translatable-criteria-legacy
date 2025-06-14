@@ -21,6 +21,7 @@ import type {
 } from '../../../types/join-parameter.types.js';
 import type { IFilterExpression } from '../../../types/filter-expression.interface.js';
 import type { Cursor } from '../../../cursor.js';
+import type { ICriteriaBase } from '../../../types/criteria.interface.js';
 
 type TypeOrmConditionFragment = {
   queryFragment: string;
@@ -130,6 +131,22 @@ export class TypeOrmMysqlTranslator<
     return { queryFragment, parameters };
   }
 
+  private resolveSelects<
+    RootCriteriaSchema extends CriteriaSchema,
+    RootAlias extends SelectedAliasOf<RootCriteriaSchema>,
+  >(criteria: ICriteriaBase<RootCriteriaSchema, RootAlias>) {
+    if (criteria.select.length > 0 && !criteria.selectAll) {
+      criteria.orders.forEach((order) =>
+        this.selects.add(`${criteria.alias}.${String(order.field)}`),
+      );
+      criteria.select.forEach((field) =>
+        this.selects.add(`${criteria.alias}.${String(field)}`),
+      );
+    } else {
+      this.selects.add(criteria.alias);
+    }
+  }
+
   private selects: Set<string> = new Set<string>([]);
   visitRoot<
     RootCriteriaSchema extends CriteriaSchema,
@@ -140,13 +157,7 @@ export class TypeOrmMysqlTranslator<
   ): SelectQueryBuilder<T> {
     this.paramCounter = 0;
     this.selects = new Set<string>([]);
-    if (criteria.select.length > 0) {
-      criteria.select.forEach((field) =>
-        this.selects.add(`${criteria.alias}.${String(field)}`),
-      );
-    } else {
-      this.selects.add(criteria.alias);
-    }
+    this.resolveSelects(criteria);
 
     let mainWhereClauseApplied = false;
 
@@ -186,7 +197,6 @@ export class TypeOrmMysqlTranslator<
     }
 
     criteria.orders.forEach((order, index) => {
-      this.selects.add(`${criteria.alias}.${String(order.field)}`);
       const orderField = `${criteria.alias}.${String(order.field)}`;
       if (index === 0 && !criteria.cursor) {
         qb.orderBy(orderField, order.direction);
@@ -205,13 +215,8 @@ export class TypeOrmMysqlTranslator<
     for (const joinDetail of criteria.joins) {
       joinDetail.criteria.accept(this, joinDetail.parameters, qb);
     }
-    if (this.selects.size === 0) {
-      qb.select(criteria.alias);
-    } else {
-      qb.select(Array.from(this.selects.values()));
-    }
 
-    return qb;
+    return qb.select(Array.from(this.selects.values()));
   }
 
   private applyConditionToQueryBuilder(
@@ -355,16 +360,9 @@ export class TypeOrmMysqlTranslator<
       onConditionParams,
     );
 
-    if (criteria.select.length > 0) {
-      criteria.select.forEach((field) =>
-        this.selects.add(`${criteria.alias}.${String(field)}`),
-      );
-    } else {
-      this.selects.add(criteria.alias);
-    }
+    this.resolveSelects(criteria);
 
     criteria.orders.forEach((order) => {
-      this.selects.add(`${criteria.alias}.${String(order.field)}`);
       qb.addOrderBy(`${joinAlias}.${String(order.field)}`, order.direction);
     });
 

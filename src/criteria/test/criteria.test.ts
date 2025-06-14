@@ -174,7 +174,7 @@ describe('Criteria', () => {
       criteriaRoot.setSelect(['uuid', 'title']); // Primero selecciona campos específicos
       expect(criteriaRoot.select).toEqual(['uuid', 'title']); // Confirma la selección específica
 
-      criteriaRoot.selectAll(); // Llama a selectAll()
+      criteriaRoot.resetSelect();
       expect(criteriaRoot.select).toEqual(PostSchema.fields); // Verifica que ahora selecciona todos los campos del schema
     });
 

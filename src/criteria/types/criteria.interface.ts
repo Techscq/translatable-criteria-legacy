@@ -32,8 +32,9 @@ export interface ICriteriaBase<
    * This overrides any previous specific selections made by `setSelect()`.
    * @returns {ICriteriaBase<TSchema, CurrentAlias>} The current criteria instance for chaining.
    */
-  selectAll(): ICriteriaBase<TSchema, CurrentAlias>;
+  resetSelect(): ICriteriaBase<TSchema, CurrentAlias>;
 
+  get selectAll(): boolean;
   /**
    * Sets the cursor for pagination. A cursor defines a point from which to fetch
    * the next or previous set of results. It typically uses a combination of
