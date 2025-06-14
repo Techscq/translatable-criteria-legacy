@@ -1,5 +1,11 @@
 # translatable-criteria
 
+## 0.0.4
+
+### Patch Changes
+
+- 665ab27: Fix: Resolved duplicate column selection in TypeOrmTranslator for joins and when order by clauses are used with default selections.
+
 ## 0.0.3
 
 ### Patch Changes
