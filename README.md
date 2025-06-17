@@ -1,16 +1,17 @@
+# translatable-criteria (DEPRECATED / OBSOLETO)
+
+**⚠️ This package is deprecated and has been renamed to [`@nulledexp/translatable-criteria`](https://www.npmjs.com/package/@nulledexp/translatable-criteria).**
+**Please update your dependencies.**
+
+**The new development and updated documentation are located at: https://github.com/Techscq/translatable-criteria**
+
+---
+
 # Translatable Criteria
 
 [![Development Stage](https://img.shields.io/badge/Development-Active%20Development-green)]()
 
 A TypeScript library for building data-source agnostic, translatable query criteria. Define complex filtering, ordering, and join logic in a structured, type-safe way, then translate it to your specific data source using custom translators.
-
-## Installation
-
-**Note:** If you plan to use the included `TypeOrmMysqlTranslator`, ensure you have `typeorm` and your database driver (e.g., `mysql2`) installed in your project:
-
-```bash
-  npm install translatable-criteria
-```
 
 ## Overview
 
